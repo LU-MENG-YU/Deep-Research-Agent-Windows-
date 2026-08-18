@@ -8,6 +8,8 @@
 >
 > 這份教學是「新手照著做就能裝」版本。  
 > 所有 API Key 都不要貼到 GitHub、Discord、LINE 或公開截圖。
+>
+> **這一版的規則：凡是教你「檢查某個指令」，後面一定附「如果沒有，要怎麼安裝或修復」。不要看到 `node -v`、`git --version`、`uv --version` 失敗還直接往下做。**
 
 ---
 
@@ -280,6 +282,8 @@ iex (irm https://hermes-agent.nousresearch.com/install.ps1)
 
 ## 4.3 檢查 Hermes
 
+先執行：
+
 ```powershell
 hermes doctor
 ```
@@ -290,18 +294,298 @@ hermes doctor
 hermes doctor --fix
 ```
 
-常見正常項目：
+Hermes 的 Windows 原生安裝器本來就會幫你處理大部分前置環境，包括：
 
 ```text
-Python Environment
-Virtual environment
-Git
+uv
+Python 3.11
 Node.js
+Git / PortableGit
 ripgrep
-Playwright Chromium
+ffmpeg
+Hermes virtual environment
 ```
 
-部分 optional 工具沒裝不代表 Hermes 壞掉。
+所以正常情況下 **不需要先自己裝 Python、Node、Git 或 uv**。
+
+官方 Windows 說明：
+
+https://hermes-agent.nousresearch.com/docs/user-guide/windows-native
+
+---
+
+## 4.4 一次檢查所有後面會用到的指令
+
+把下面整段貼進 PowerShell：
+
+```powershell
+$commands = @(
+  "hermes",
+  "git",
+  "uv",
+  "uvx",
+  "node",
+  "npm",
+  "npx"
+)
+
+foreach ($cmd in $commands) {
+    $found = Get-Command $cmd -ErrorAction SilentlyContinue
+
+    if ($found) {
+        Write-Host "[OK]      $cmd -> $($found.Source)"
+    }
+    else {
+        Write-Host "[MISSING] $cmd"
+    }
+}
+```
+
+理想結果：
+
+```text
+[OK] hermes
+[OK] git
+[OK] uv
+[OK] uvx
+[OK] node
+[OK] npm
+[OK] npx
+```
+
+如果全部都是 `[OK]`：
+
+```text
+直接繼續下一章。
+```
+
+如果有 `[MISSING]`，不要略過。照下面修。
+
+---
+
+### A. `hermes` 找不到
+
+先：
+
+```text
+1. 關掉 PowerShell
+2. 重新開 PowerShell
+3. 再輸入 hermes doctor
+```
+
+如果仍然找不到，重新執行官方 Windows installer：
+
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
+
+完成後再次：
+
+```text
+關閉 PowerShell
+→ 重新開啟
+```
+
+再：
+
+```powershell
+hermes doctor
+```
+
+---
+
+### B. `git` 找不到
+
+Hermes installer 正常會自動配置 PortableGit。
+
+先嘗試重新跑：
+
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
+
+如果你希望另外在 Windows 全域安裝 Git，也可以使用 Git for Windows：
+
+https://git-scm.com/download/win
+
+安裝時一般保持預設選項即可。
+
+安裝完成後：
+
+```text
+關掉所有 PowerShell
+→ 重新開啟
+```
+
+驗證：
+
+```powershell
+git --version
+```
+
+---
+
+### C. `uv` 或 `uvx` 找不到
+
+Hermes 正常會把自己的 `uv.exe` 放在：
+
+```text
+%LOCALAPPDATA%\hermes\bin\
+```
+
+先測：
+
+```powershell
+Test-Path "$env:LOCALAPPDATA\hermes\bin\uv.exe"
+```
+
+如果得到：
+
+```text
+True
+```
+
+測試 Hermes 管理的 uv：
+
+```powershell
+& "$env:LOCALAPPDATA\hermes\bin\uv.exe" --version
+```
+
+如果這個可以工作，只是 PowerShell 找不到 `uv`，最簡單的處理仍是：
+
+```text
+重新執行 Hermes installer
+→ 關閉 PowerShell
+→ 重新開啟
+```
+
+如果 `uv.exe` 本身也不存在，可以另外使用 Astral 官方 Windows installer：
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+官方文件：
+
+https://docs.astral.sh/uv/getting-started/installation/
+
+裝完後：
+
+```text
+關閉 PowerShell
+→ 重新開啟
+```
+
+驗證：
+
+```powershell
+uv --version
+uvx --version
+```
+
+---
+
+### D. `node`、`npm` 或 `npx` 找不到
+
+**不要直接去找一個「npx 安裝包」。**
+
+它們的關係是：
+
+```text
+Node.js
+  └─ npm
+      └─ npx
+```
+
+Node.js 官方 Windows 安裝會一起提供 npm；目前的 `npx` 是 npm 提供的命令，不需要獨立安裝。
+
+最先嘗試：
+
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
+
+因為 Hermes Windows installer 本來就會配置 Node.js。
+
+完成後：
+
+```text
+關掉 PowerShell
+→ 重新開啟
+```
+
+驗證：
+
+```powershell
+node -v
+npm -v
+npx -v
+```
+
+如果仍然缺少，或你想安裝一套 Windows 全域 Node.js，請看本 README 的：
+
+[NotebookLM → Node.js / npm / npx 完整安裝](#node-full-install)
+
+---
+
+### E. Python 找不到要不要自己裝？
+
+通常 **不用**。
+
+這套流程使用的是 Hermes 自己管理的 Python：
+
+```text
+%LOCALAPPDATA%\hermes\hermes-agent\venv\
+```
+
+檢查：
+
+```powershell
+Test-Path "$env:LOCALAPPDATA\hermes\hermes-agent\venv\Scripts\python.exe"
+```
+
+應該得到：
+
+```text
+True
+```
+
+再：
+
+```powershell
+& "$env:LOCALAPPDATA\hermes\hermes-agent\venv\Scripts\python.exe" --version
+```
+
+如果這個檔案根本不存在，優先重新跑 Hermes installer，不要先亂裝另一套 Python：
+
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
+
+---
+
+### F. 「我不懂哪些 Optional warning 要處理」
+
+先看：
+
+```powershell
+hermes doctor
+```
+
+只要：
+
+```text
+Hermes 本體
+Python environment
+virtual environment
+Git
+Node
+基本 browser / terminal
+```
+
+正常，就可以先繼續。
+
+像 Discord、Telegram、Docker 之類你根本沒要用的 optional feature，可以先不裝。
 
 [⬆ 回到目錄](#toc)
 
@@ -455,16 +739,79 @@ Ctrl+C
 
 https://github.com/CYC2002tommy/Deep-Research-Agent
 
-PowerShell：
+---
+
+## 6.1 先確認 Git
+
+```powershell
+git --version
+```
+
+有看到版本號，例如：
+
+```text
+git version 2.x.x
+```
+
+才繼續。
+
+### 如果 `git` 找不到
+
+Hermes Windows installer 正常會提供 PortableGit。
+
+先重新跑：
+
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
+
+關掉 PowerShell、重新開啟，再測：
+
+```powershell
+git --version
+```
+
+仍然不行，可安裝官方 Git for Windows：
+
+https://git-scm.com/download/win
+
+安裝完成後一定要：
+
+```text
+關閉 PowerShell
+→ 重新開啟
+```
+
+---
+
+## 6.2 Clone Deep-Research-Agent
+
+先切到 Skills 目錄：
 
 ```powershell
 cd "$env:LOCALAPPDATA\hermes\skills"
 ```
 
-clone：
+如果是第一次安裝：
 
 ```powershell
 git clone https://github.com/CYC2002tommy/Deep-Research-Agent.git
+```
+
+### 如果出現「destination path already exists」
+
+代表之前已經 clone 過，不要再 clone 一份。
+
+改成：
+
+```powershell
+git -C "$env:LOCALAPPDATA\hermes\skills\Deep-Research-Agent" status
+```
+
+如果只是想更新：
+
+```powershell
+git -C "$env:LOCALAPPDATA\hermes\skills\Deep-Research-Agent" pull
 ```
 
 確認：
@@ -500,37 +847,143 @@ enabled
 
 # 7. 安裝 Python dependencies
 
-Deep-Research-Agent 需要 Python packages。
+Deep-Research-Agent 還需要額外 Python packages。
 
-不要假設 Hermes venv 裡一定有 pip。
+**這裡不要用系統 Python，也不要因為 `pip` 不存在就亂補 pip。**
 
-直接使用 `uv`：
+我們直接指定 Hermes 自己的 virtual environment。
+
+---
+
+## 7.1 先確認 Hermes Python 存在
+
+```powershell
+$hermesPython = "$env:LOCALAPPDATA\hermes\hermes-agent\venv\Scripts\python.exe"
+
+Test-Path $hermesPython
+```
+
+應該：
+
+```text
+True
+```
+
+再：
+
+```powershell
+& $hermesPython --version
+```
+
+### 如果是 `False`
+
+Hermes 的 venv 不完整。
+
+重新執行：
+
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
+
+完成後重開 PowerShell，再重新測。
+
+---
+
+## 7.2 確認 uv
+
+```powershell
+uv --version
+```
+
+### 如果 `uv` 找不到
+
+先看 Hermes 管理的 uv 是否存在：
+
+```powershell
+Test-Path "$env:LOCALAPPDATA\hermes\bin\uv.exe"
+```
+
+如果是：
+
+```text
+True
+```
+
+後面直接用完整路徑即可：
+
+```powershell
+& "$env:LOCALAPPDATA\hermes\bin\uv.exe" --version
+```
+
+如果是：
+
+```text
+False
+```
+
+先重新跑 Hermes installer：
+
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
+
+仍然沒有，再使用 Astral 官方 Windows installer：
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+官方：
+
+https://docs.astral.sh/uv/getting-started/installation/
+
+---
+
+## 7.3 安裝 requirements
+
+最穩定的寫法是不依賴 PATH，直接使用 Hermes 自己的 `uv.exe`：
+
+```powershell
+$uvExe = "$env:LOCALAPPDATA\hermes\bin\uv.exe"
+$hermesPython = "$env:LOCALAPPDATA\hermes\hermes-agent\venv\Scripts\python.exe"
+$requirements = "$env:LOCALAPPDATA\hermes\skills\Deep-Research-Agent\requirements.txt"
+
+& $uvExe pip install --python $hermesPython -r $requirements
+```
+
+如果你的 `uv.exe` 是另外安裝而不是 Hermes 管理，可改：
 
 ```powershell
 uv pip install --python "$env:LOCALAPPDATA\hermes\hermes-agent\venv\Scripts\python.exe" -r "$env:LOCALAPPDATA\hermes\skills\Deep-Research-Agent\requirements.txt"
 ```
 
-測試：
+---
+
+## 7.4 驗證 dependencies
 
 ```powershell
 & "$env:LOCALAPPDATA\hermes\hermes-agent\venv\Scripts\python.exe" -c "import docx, fitz, requests, matplotlib, seaborn, pandas, duckduckgo_search; print('Deep Research Python deps OK')"
 ```
 
-成功應看到：
+成功：
 
 ```text
 Deep Research Python deps OK
 ```
 
-若：
+---
 
-```text
-No module named pip
-```
+## 7.5 如果看到 `No module named pip`
 
 不用補 pip。
 
-繼續用：
+因為我們根本不需要：
+
+```text
+python -m pip
+```
+
+繼續使用：
 
 ```text
 uv pip
@@ -1409,21 +1862,252 @@ https://github.com/moodRobotics/notebooklm-mcp-server
 
 ---
 
-## 16.1 確認 Node / npx
+<a id="node-full-install"></a>
 
-```powershell
-node -v
-npx -v
+## 16.1 Node.js / npm / npx 到底是什麼？
+
+NotebookLM MCP 是 Node.js / TypeScript 工具，所以需要：
+
+```text
+Node.js
+npm
+npx
 ```
 
-都有版本號再繼續。
+三者關係：
+
+```text
+Node.js = JavaScript runtime
+npm     = Node.js 的 package manager
+npx     = npm 提供的套件執行命令
+```
+
+**npx 不需要另外安裝。**
+
+目前 npm 官方已把獨立 `npx` package 視為舊作法；新版 `npx` 使用 npm 的 `npm exec` 機制。
+
+官方：
+
+https://docs.npmjs.com/cli/commands/npx/
 
 ---
 
-## 16.2 第一次登入
+## 16.2 先檢查
+
+一次貼：
+
+```powershell
+node -v
+npm -v
+npx -v
+```
+
+如果三行都有版本號，例如：
+
+```text
+v22.x.x
+10.x.x
+10.x.x
+```
+
+直接跳到：
+
+[第一次登入 NotebookLM](#notebooklm-auth)
+
+---
+
+## 16.3 如果 `node` / `npm` / `npx` 任一個不存在
+
+### 方法 A：先讓 Hermes 修復（推薦）
+
+Hermes Windows installer 本來就會安裝 / 配置 Node.js。
+
+執行：
+
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
+
+安裝完成後：
+
+```text
+1. 關掉所有 PowerShell / Terminal
+2. 重新開 PowerShell
+```
+
+再：
+
+```powershell
+node -v
+npm -v
+npx -v
+```
+
+如果三個都正常，完成。
+
+---
+
+### 方法 B：直接安裝官方 Node.js LTS
+
+如果 Hermes 修復後還是找不到，最容易理解的方法就是直接安裝官方 Node.js LTS。
+
+官方下載：
+
+https://nodejs.org/en/download
+
+在網頁上：
+
+```text
+1. 選 LTS
+2. 選 Windows
+3. 選自己的架構（一般 Intel / AMD 電腦是 x64）
+4. 下載 Windows Installer (.msi)
+5. 雙擊安裝
+6. 基本上一路保持預設選項
+7. 確認 npm package manager 會一起安裝
+8. 安裝完成
+9. 關掉所有 PowerShell
+10. 重新開 PowerShell
+```
+
+不要選 Current 只是為了追最新版；這套用途優先選：
+
+```text
+LTS
+```
+
+比較穩定。
+
+Node.js 官方下載頁目前會一起提供 npm。npm 再提供 npx。
+
+---
+
+### 方法 C：會用 winget 的人可以一行安裝
+
+```powershell
+winget install -e --id OpenJS.NodeJS.LTS
+```
+
+安裝完：
+
+```text
+關閉 PowerShell
+→ 重新開啟
+```
+
+驗證：
+
+```powershell
+node -v
+npm -v
+npx -v
+```
+
+如果你的 Windows 連 `winget` 都沒有：
+
+```text
+不要再多修 winget
+```
+
+直接用上面的 Node.js 官方 MSI 安裝器最簡單。
+
+---
+
+## 16.4 `node` 有版本，但 `npm` / `npx` 沒有
+
+先：
+
+```powershell
+where.exe node
+where.exe npm
+where.exe npx
+```
+
+如果 Node 有路徑但 npm / npx 不完整：
+
+```text
+不要 npm install -g npx
+```
+
+直接：
+
+```text
+重新執行 Node.js LTS Installer
+→ Repair / 重新安裝
+```
+
+因為正常 Node.js Windows 安裝就應該一起包含 npm 與 npx。
+
+---
+
+## 16.5 PowerShell 顯示 `npx.ps1 cannot be loaded`
+
+有些 Windows 會因 PowerShell execution policy 擋住 `.ps1` shim。
+
+例如：
+
+```text
+npx.ps1 cannot be loaded because running scripts is disabled
+```
+
+這時候先不要改全機安全政策。
+
+直接測：
+
+```powershell
+npx.cmd -v
+```
+
+如果這個成功，可以把手動指令寫成：
+
+```powershell
+npx.cmd -y notebooklm-mcp-server auth
+```
+
+Hermes MCP 的：
+
+```yaml
+command: "npx"
+```
+
+在正常 Windows PATH 下仍可解析 Node 的 command shim。
+
+---
+
+## 16.6 最後驗證
+
+一定要三個都過：
+
+```powershell
+node -v
+npm -v
+npx -v
+```
+
+或如果 PowerShell 擋 `.ps1`：
+
+```powershell
+node -v
+npm.cmd -v
+npx.cmd -v
+```
+
+完成後才進 NotebookLM MCP。
+
+---
+
+<a id="notebooklm-auth"></a>
+
+## 16.7 第一次登入
 
 ```powershell
 npx -y notebooklm-mcp-server auth
+```
+
+如果 PowerShell 報 `npx.ps1` execution policy 錯誤，改：
+
+```powershell
+npx.cmd -y notebooklm-mcp-server auth
 ```
 
 瀏覽器會開啟：
@@ -1444,9 +2128,15 @@ npx -y notebooklm-mcp-server auth
 npx -y notebooklm-mcp-server refresh_auth
 ```
 
+若 PowerShell 擋 `.ps1`，改：
+
+```powershell
+npx.cmd -y notebooklm-mcp-server refresh_auth
+```
+
 ---
 
-## 16.3 加入 Hermes MCP
+## 16.8 加入 Hermes MCP
 
 打開：
 
@@ -1501,7 +2191,7 @@ supports_parallel_tool_calls: false
 
 ---
 
-## 16.4 測試 MCP
+## 16.9 測試 MCP
 
 ```powershell
 hermes mcp test notebooklm
@@ -1519,7 +2209,7 @@ Connected
 
 ---
 
-## 16.5 第一次只讀測試
+## 16.10 第一次只讀測試
 
 ```powershell
 cd "$env:USERPROFILE\Documents\DeepResearch"
@@ -2512,13 +3202,57 @@ hermes
 
 ---
 
-## 28.9 NotebookLM `npx` 找不到
+## 28.9 NotebookLM `node` / `npm` / `npx` 找不到
+
+先：
 
 ```powershell
 node -v
+npm -v
 npx -v
-hermes doctor
 ```
+
+如果缺少：
+
+### 第一選擇
+
+重新跑 Hermes installer：
+
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
+
+重開 PowerShell再測。
+
+### 第二選擇
+
+安裝 Node.js LTS：
+
+https://nodejs.org/en/download
+
+安裝完成後重新開 PowerShell：
+
+```powershell
+node -v
+npm -v
+npx -v
+```
+
+### 如果只有 `npx.ps1` 被 PowerShell 擋
+
+```powershell
+npx.cmd -v
+```
+
+如果 `.cmd` 正常，不需要另外安裝 npx。
+
+**不要使用：**
+
+```text
+npm install -g npx
+```
+
+新版 npx 本來就是 npm 提供。
 
 ---
 
@@ -2743,7 +3477,7 @@ notebooklm
 
 ## NotebookLM
 
-- [ ] Node / npx 正常
+- [ ] Node.js / npm / npx 都正常
 - [ ] NotebookLM MCP 已 auth
 - [ ] `hermes mcp test notebooklm` Connected
 - [ ] Hermes 可以 list notebooks
@@ -2958,3 +3692,4 @@ anti-bot protection
 這才是整套流程。
 
 [⬆ 回到目錄](#toc)
+
