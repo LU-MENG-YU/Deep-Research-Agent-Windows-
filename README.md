@@ -1837,48 +1837,760 @@ https://github.com/qwe4559999/scopus-mcp
 
 目前 MCP 2.x 相容問題：
 
-https://github.com/qwe4559999/scopus-mcp/pull/12
+https://github.com/qwe4559999/scopus-mcp/pull/
 
----
 
-# 24. 最重要的使用原則
+NotebookLM + 本地文獻儲存
 
-不要把「Deep Research」理解成：
+> 建議把本章插在原 README 的「建立研究工作區」之後、「Economy Mode」之前。
+> 
+> 本章以 Windows 10/11 + Hermes Agent + Deep-Research-Agent 為例。
+> 
+> NotebookLM MCP 為第三方工具，不是 Google 官方 NotebookLM API。請自行評估帳號安全與使用風險。
 
-```text
-按一下 → AI 自己幫你寫論文
+────────
+
+15. 設定本地文獻儲存
+
+Deep Research 不建議只把搜尋結果留在聊天紀錄裡。建議把每次研究產生的 metadata、DOI/URL、篩選結果、Evidence table、合法取得的全文 PDF、最終報告與 NotebookLM 匯入紀錄全部保存在固定工作區。
+
+15.1 建立工作區
+
+```powershell
+$root = "$env:USERPROFILE\Documents\DeepResearch"
+
+New-Item -ItemType Directory -Force `
+"$root\cache", `
+"$root\evidence", `
+"$root\papers", `
+"$root\assets", `
+"$root\reports", `
+"$root\notebooklm" | Out-Null
 ```
 
-比較正確的是：
+完成後：
 
 ```text
-AI 幫你做大量機械工作
-        ↓
-搜尋
-去重
-整理
-抓 metadata
-讀全文
-建立 evidence table
-找研究缺口
-        ↓
-研究者自己判斷
+Documents\
+└─ DeepResearch\
+   ├─ cache\
+   ├─ evidence\
+   ├─ papers\
+   ├─ assets\
+   ├─ reports\
+   └─ notebooklm\
 ```
 
-尤其：
+用途：
 
 ```text
-DOI 存在 ≠ 文章支持 AI 寫的那句話
+cache\      → API 回應、暫存資料
+evidence\   → literature_manifest.csv、evidence tables、screening results、DOI/metadata verification
+papers\     → 合法取得的 PDF 全文
+assets\     → 圖表、圖片、流程圖
+reports\    → Phase 0 / Phase 0.5 / final report / DOCX
+notebooklm\ → NotebookLM 上傳紀錄、notebook 名稱、來源清單
 ```
 
-最後仍然要由研究者自己確認：
+15.2 建議的 PDF 命名
+
+不要讓 Agent 儲存成 document.pdf、download(3).pdf 或 fulltext.pdf。
+
+建議格式：
 
 ```text
-原始論文
-Methods
-Results
-研究情境
-統計結果
+YEAR_FirstAuthor_ShortTitle.pdf
 ```
 
-AI 可以當研究助理，但不能取代研究責任。
+例如：
+
+```text
+2014_Baker_Digital_24h_Dietary_Recall_Athletes.pdf
+```
+
+DOI 請記錄在 manifest，不要把完整 DOI 塞進 Windows 檔名，避免 / 等非法字元。
+
+15.3 建立文獻 Manifest
+
+建議至少維護：
+
+```text
+C:\Users\<你的帳號>\Documents\DeepResearch\evidence\literature_manifest.csv
+```
+
+欄位：
+
+```text
+title
+authors
+year
+journal
+doi
+openalex_id
+scopus_id
+semantic_scholar_id
+source_database
+screening_status
+verification_level
+oa_url
+local_pdf
+notebooklm_notebook
+notebooklm_uploaded
+notes
+```
+
+verification_level 建議只使用：
+
+```text
+metadata
+abstract
+full_text
+```
+
+不要把「找到 DOI」等同於「已讀全文」。
+
+────────
+
+15.4 關於原 Repo 的 Unpaywall 範例 Script
+
+目前 Deep-Research-Agent 公開版本中的：
+
+```text
+skills/deep-science-writer/scripts/node/fetch_unpaywall_oa.js
+```
+
+比較像作者自己的示範腳本，不建議直接當成通用下載器。
+
+目前版本內有硬編碼：
+
+```text
+DOI 清單
+作者自己的 Unpaywall email
+輸出檔名
+```
+
+因此新使用者不要直接期待它會自動下載自己搜尋到的所有論文。
+
+本 README 的做法是：
+
+```text
+Agent 搜尋與篩選
+↓
+合法 OA / institutional access
+↓
+把實際取得的 PDF 存到 papers\
+↓
+更新 literature_manifest.csv
+↓
+再選擇性送進 NotebookLM
+```
+
+如果未來要做全自動 OA downloader，建議另外寫可讀取 manifest / DOI 清單的通用腳本，不要修改或沿用硬編碼範例。
+
+────────
+
+16. 修改 Deep Science Writer：強制本地保存
+
+開啟：
+
+```powershell
+$skill = "$env:LOCALAPPDATA\hermes\skills\Deep-Research-Agent\skills\deep-science-writer\SKILL.md"
+notepad $skill
+```
+
+在 LOCAL RUNTIME POLICY — WINDOWS / ECONOMY MODE 區塊中追加：
+
+```markdown
+### Local Literature Storage
+
+- The research workspace is:
+  `C:/Users/YOUR_USERNAME/Documents/DeepResearch/`
+
+- Store literature metadata and screening records under:
+  `C:/Users/YOUR_USERNAME/Documents/DeepResearch/evidence/`
+
+- Store legally obtained full-text papers under:
+  `C:/Users/YOUR_USERNAME/Documents/DeepResearch/papers/`
+
+- Store generated research reports under:
+  `C:/Users/YOUR_USERNAME/Documents/DeepResearch/reports/`
+
+- Maintain a literature manifest whenever practical:
+  `C:/Users/YOUR_USERNAME/Documents/DeepResearch/evidence/literature_manifest.csv`
+
+- For every screened or retained paper, record at minimum:
+  title, authors, year, journal, DOI, source database,
+  screening decision, verification level, OA URL,
+  local PDF path, and NotebookLM upload status.
+
+- Verification levels MUST be explicitly distinguished:
+  metadata / abstract / full_text.
+
+- Never mark a paper as full-text verified unless the actual full text
+  was successfully obtained and read.
+
+- Save each legally obtained paper as an individual PDF.
+  Do not merge multiple papers into one PDF.
+
+- Recommended filename format:
+  `YEAR_FirstAuthor_ShortTitle.pdf`
+
+- Deduplicate papers by DOI first, then by normalized title.
+
+- If a full text cannot legally be obtained, keep the metadata and DOI/URL
+  in the manifest and mark the PDF as unavailable.
+  Do not fabricate a local file.
+```
+
+把 YOUR_USERNAME 換成自己的 Windows 使用者名稱。
+
+查詢：
+
+```powershell
+$env:USERNAME
+$env:USERPROFILE
+```
+
+────────
+
+17. NotebookLM MCP：讓 Hermes 操作 NotebookLM
+
+Deep-Research-Agent 原始設計的 Phase 7 會把研究文獻放進 NotebookLM。
+
+這裡使用的是第三方 MCP：
+
+```text
+notebooklm-mcp-server
+```
+
+專案：
+
+https://github.com/moodRobotics/notebooklm-mcp-server
+
+Deep-Research-Agent：
+
+https://github.com/CYC2002tommy/Deep-Research-Agent
+
+17.1 確認 Node.js / npx
+
+```powershell
+node -v
+npx -v
+```
+
+如果沒有版本號：
+
+```powershell
+hermes doctor
+```
+
+先確認 Node.js。
+
+17.2 第一次登入 NotebookLM
+
+```powershell
+npx -y notebooklm-mcp-server auth
+```
+
+第一次可能需要下載套件。接著瀏覽器會開啟：
+
+```text
+登入 Google 帳號
+↓
+進入 NotebookLM
+↓
+確認看得到 notebooks
+↓
+完成後關閉瀏覽器
+```
+
+若之後登入失效：
+
+```powershell
+npx -y notebooklm-mcp-server refresh_auth
+```
+
+17.3 加入 Hermes MCP
+
+開：
+
+```powershell
+notepad "$env:LOCALAPPDATA\hermes\config.yaml"
+```
+
+如果前面已經有：
+
+```yaml
+mcp_servers:
+```
+
+不要再建立第二個 mcp_servers:。
+
+把 notebooklm: 加在 Exa / Scopus 同一層：
+
+```yaml
+mcp_servers:
+  exa:
+    url: "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa"
+    timeout: 180
+    connect_timeout: 60
+    supports_parallel_tool_calls: false
+
+  scopus:
+    command: "uvx"
+    args:
+      - "--with"
+      - "mcp>=1.0,<2"
+      - "scopus-mcp"
+    env:
+      SCOPUS_API_KEY: "${SCOPUS_API_KEY}"
+    timeout: 180
+    connect_timeout: 60
+    supports_parallel_tool_calls: false
+
+  notebooklm:
+    command: "npx"
+    args:
+      - "-y"
+      - "notebooklm-mcp-server"
+      - "start"
+    timeout: 300
+    connect_timeout: 60
+    supports_parallel_tool_calls: false
+```
+
+NotebookLM 可能會建立 notebook、加入來源，因此不建議 parallel write。
+
+17.4 測試 NotebookLM MCP
+
+```powershell
+hermes mcp test notebooklm
+```
+
+正常應該看到：
+
+```text
+Connected
+Tools discovered: ...
+```
+
+工具數量可能隨版本變動，不要用固定數字判定。
+
+常見功能包括：
+
+```text
+notebook_list
+notebook_create
+notebook_add_local_file
+notebook_add_url
+notebook_add_text
+notebook_query
+```
+
+17.5 第一次安全測試
+
+```powershell
+cd "$env:USERPROFILE\Documents\DeepResearch"
+hermes
+```
+
+輸入：
+
+```text
+Use the NotebookLM MCP to list my existing notebooks.
+
+Do not create, rename, upload, modify, or delete anything.
+Return notebook titles only.
+```
+
+能列出 notebook，代表：
+
+```text
+Hermes → NotebookLM MCP → Google Account
+```
+
+整條鏈成功。
+
+────────
+
+18. 測試「本地檔案 → NotebookLM」
+
+先建立測試檔：
+
+```powershell
+Set-Content `
+"$env:USERPROFILE\Documents\DeepResearch\papers\notebooklm_test.md" `
+"# NotebookLM Test`nThis file was uploaded by Hermes for testing."
+```
+
+進 Hermes 後輸入：
+
+```text
+Use the NotebookLM MCP.
+
+Create a notebook named:
+Hermes NotebookLM Test
+
+Then upload this local file as one individual source:
+
+C:/Users/YOUR_USERNAME/Documents/DeepResearch/papers/notebooklm_test.md
+
+After upload, verify that the notebook and source exist.
+
+Do not delete or modify any other notebook.
+```
+
+NotebookLM：
+
+https://notebooklm.google.com/
+
+────────
+
+19. 搜尋到的文獻怎麼導入 NotebookLM？
+
+不建議把 OpenAlex 找到的 40～60 篇候選全部塞進 NotebookLM。
+
+建議流程：
+
+```text
+OpenAlex
+↓
+40～60 candidate papers
+↓
+去重 + abstract screening
+↓
+Scopus / Semantic Scholar cross-check
+↓
+8～12 篇核心全文
+↓
+本地 papers\
+↓
+NotebookLM
+```
+
+NotebookLM 建議放：
+
+• 已進入 deep reading 的文獻
+• 最終 evidence base
+• 最終有引用的文獻
+• 使用者特別指定的重要文獻
+
+不要放：
+
+• 已排除候選文獻
+• 搜尋結果頁
+• 只有 title 沒內容的 metadata
+• 重複 DOI
+• 無法合法取得的假 PDF
+
+────────
+
+20. 在 SKILL.md 加入 NotebookLM 自動匯入規則
+
+在 LOCAL RUNTIME POLICY 追加：
+
+```markdown
+### NotebookLM Literature Archiving
+
+NotebookLM integration is enabled only when the `notebooklm` MCP server
+is connected and authenticated.
+
+Do NOT upload the entire broad-discovery candidate pool to NotebookLM.
+
+Upload only:
+- papers selected for deep reading;
+- papers retained in the final evidence base;
+- papers cited in the final report;
+- papers explicitly requested by the user.
+
+Before uploading:
+1. Deduplicate by DOI, then normalized title.
+2. Verify the paper metadata.
+3. Prefer an actual legally obtained local full-text PDF.
+4. Confirm the local file exists.
+5. Record the local path in `evidence/literature_manifest.csv`.
+
+For each research project:
+- Create or reuse ONE NotebookLM notebook dedicated to that project.
+- Use a descriptive notebook name such as:
+  `DeepResearch - <Research Topic>`
+- Add each paper as an INDIVIDUAL source.
+- Never combine multiple papers into one source solely to save source slots.
+
+Preferred upload order:
+1. Local full-text PDF → `notebook_add_local_file`
+2. Legitimate open-access PDF/web URL → `notebook_add_url`
+3. Verified text/abstract only when full text is genuinely unavailable
+   and the source is clearly labeled as abstract-only.
+
+After successful upload:
+- update `notebooklm_uploaded = yes`
+  in `evidence/literature_manifest.csv`;
+- record the NotebookLM notebook name;
+- never claim upload success without verifying that the source exists.
+
+If NotebookLM authentication fails:
+- stop NotebookLM ingestion;
+- preserve all local files and evidence records;
+- continue the research workflow normally;
+- do not block the literature review.
+
+NotebookLM is a knowledge-management destination, not a substitute
+for DOI verification or full-text evidence verification.
+```
+
+────────
+
+21. 完整保存流程
+
+```text
+OpenAlex
+   ↓
+Broad discovery
+   ↓
+Dedup + screening
+   ↓
+Scopus / Semantic Scholar / Exa
+   ↓
+evidence/literature_manifest.csv
+   ↓
+Selected deep reads
+   ├──────────────→ papers/*.pdf
+   ├──────────────→ reports/*.md
+   └──────────────→ NotebookLM MCP
+                         ↓
+               DeepResearch - <Topic>
+                         ├─ Paper 1
+                         ├─ Paper 2
+                         └─ ...
+```
+
+本地資料夾才是主要 archive。
+
+NotebookLM 用於：
+
+```text
+分析 / 問答 / 摘要 / Audio Overview / 跨文獻查詢
+```
+
+不要把 NotebookLM 當成唯一的備份位置。
+
+────────
+
+22. NotebookLM 免費版限制
+
+限制可能隨 Google 政策更新。目前免費版常見限制：
+
+```text
+100 notebooks
+50 sources / notebook
+50 chat queries / day
+3 audio generations / day
+```
+
+每個 source：
+
+```text
+最多 500,000 words
+本地檔案最多 200 MB
+```
+
+因此 Economy Mode 的 8～12 deep-read papers 很適合放進單一 notebook。
+
+官方說明：
+
+https://support.google.com/notebooklm/answer/16215270?hl=zh-Hant
+
+https://support.google.com/notebooklm/answer/16269187
+
+────────
+
+23. NotebookLM 支援來源
+
+目前支援包含：
+
+```text
+PDF
+DOCX
+TXT
+Markdown
+CSV
+PowerPoint
+Google Docs
+Google Slides
+Google Sheets
+Web URLs
+ePub
+YouTube URLs
+部分音訊與圖片
+```
+
+Deep Research 最常用：
+
+```text
+PDF
+Markdown
+Web URL
+```
+
+若有完整 PDF，優先 PDF。
+
+Google 官方說明指出，paywalled webpages 不支援直接作為網頁來源，因此不要把出版社付費牆頁面當成「已匯入全文」。
+
+────────
+
+24. NotebookLM MCP 常見錯誤
+
+npx 找不到
+
+```powershell
+node -v
+npx -v
+hermes doctor
+```
+
+MCP Connection closed
+
+```powershell
+npx -y notebooklm-mcp-server start
+```
+
+直接看真正錯誤。
+
+登入失效
+
+```powershell
+npx -y notebooklm-mcp-server refresh_auth
+```
+
+本地 PDF 路徑錯誤
+
+```powershell
+Test-Path "C:\Users\YOUR_USERNAME\Documents\DeepResearch\papers\paper.pdf"
+```
+
+False 代表路徑錯。
+
+Source 無法匯入
+
+常見原因：
+
+```text
+檔案 > 200MB
+內容 > 500,000 words
+PDF 有 copy protection
+來源數量達上限
+```
+
+有 DOI，但沒有 PDF
+
+在 manifest 記：
+
+```text
+local_pdf = unavailable
+verification_level = metadata / abstract
+notebooklm_uploaded = no
+```
+
+不要產生假 PDF。
+
+────────
+
+25. 正式研究 Prompt 範例
+
+```text
+For all literature retrieved during this research:
+
+- Keep the broad candidate pool in the evidence manifest only.
+
+- Save legally available full-text PDFs selected for deep reading under:
+  C:/Users/YOUR_USERNAME/Documents/DeepResearch/papers/
+
+- Deduplicate by DOI before downloading or uploading.
+
+- After full-text verification, create or reuse one NotebookLM notebook
+  for this research project.
+
+- Upload each retained deep-read/full-text paper as an individual
+  NotebookLM source.
+
+- Do not upload excluded candidates.
+
+- Do not upload a paywalled landing page and label it as full text.
+
+- Record all local paths and NotebookLM upload status in:
+  C:/Users/YOUR_USERNAME/Documents/DeepResearch/evidence/literature_manifest.csv
+
+- NotebookLM ingestion must never block the research pipeline.
+  If NotebookLM fails, keep the local archive and continue.
+```
+
+────────
+
+26. 安全與學術注意事項
+
+notebooklm-mcp-server 是第三方 MCP，不是 Google 官方 NotebookLM API。
+
+它會透過 browser session 存取登入的 Google / NotebookLM 帳號。
+
+測試階段建議不要使用高權限的主要 Google Workspace 管理員帳號；個人研究可考慮獨立研究用 Google 帳號。
+
+另外：
+
+```text
+能下載 ≠ 有權重新散布
+```
+
+本地保存與 NotebookLM 上傳都應遵守學校授權、出版社條款、著作權與 NotebookLM 使用規範。
+
+不要使用本流程繞過付費牆或存取控制。
+
+────────
+
+27. 更新後健康檢查
+
+```powershell
+Get-ChildItem "$env:USERPROFILE\Documents\DeepResearch"
+
+hermes mcp test notebooklm
+hermes mcp test exa
+hermes mcp test scopus
+hermes skills list
+```
+
+工作區應該有：
+
+```text
+cache
+evidence
+papers
+assets
+reports
+notebooklm
+```
+
+────────
+
+28. 更新後完成檢查表
+
+☐ DeepResearch 本地工作區存在
+☐ evidence 資料夾存在
+☐ papers 資料夾存在
+☐ notebooklm 資料夾存在
+☐ SKILL.md 已加入 Local Literature Storage
+☐ Node.js / npx 正常
+☐ NotebookLM MCP 已登入
+☐ hermes mcp test notebooklm Connected
+☐ Hermes 可以列出 NotebookLM notebooks
+☐ 測試本地檔案可以上傳
+☐ SKILL.md 已加入 NotebookLM Literature Archiving
+☐ broad candidate 不會全部上傳 NotebookLM
+☐ deep-read paper 會個別保留 PDF
+☐ NotebookLM 每篇文獻維持 individual source
+☐ literature manifest 會記錄本地路徑與 NotebookLM 狀態
+
+全部完成後：
+
+```text
+搜尋 → 篩選 → 本地保存 → 全文驗證 → NotebookLM 個別建檔
+```
