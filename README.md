@@ -1,17 +1,60 @@
-# Deep Research Agent — Windows 零成本安裝教學
+<a id="top"></a>
 
-> 給第一次接觸 Hermes、API、MCP 的人。
-> 目標是從一台乾淨的 Windows 電腦開始，一步一步裝到可以使用 Deep-Research-Agent 搜尋 OpenAlex、Semantic Scholar、Exa、Scopus。
+# Deep Research Agent — Windows 零成本安裝與使用完整教學
+
+> 適用：Windows 10 / 11  
+> 目標：從零開始安裝 Hermes、Deep-Research-Agent、OpenRouter、OpenAlex、Semantic Scholar、Exa、Scopus、NotebookLM，並設定本地文獻保存、免費額度保護、桌面版啟動與完整研究工作流。  
+> 最後整理：2026-08-18
 >
-> **最後更新：2026-08-17**
->
-> 本教學以 **Windows 10 / Windows 11 原生環境**為主，不需要 WSL、不需要 Docker。
+> 這份教學是「新手照著做就能裝」版本。  
+> 所有 API Key 都不要貼到 GitHub、Discord、LINE 或公開截圖。
 
 ---
 
-# 0. 我們最後要裝成什麼？
+<a id="toc"></a>
 
-完成後架構大概是：
+# 目錄
+
+1. [最後會裝成什麼](#sec-1)
+2. [先看費用與免費限制](#sec-2)
+3. [Hermes：桌面版與終端機版的關係](#sec-3)
+4. [安裝 Hermes](#sec-4)
+5. [設定免費 LLM：OpenRouter](#sec-5)
+6. [安裝 Deep-Research-Agent](#sec-6)
+7. [安裝 Python dependencies](#sec-7)
+8. [API Key 安全與 `.env`](#sec-8)
+9. [設定 OpenAlex](#sec-9)
+10. [設定 Semantic Scholar](#sec-10)
+11. [Semantic Scholar 限流保護](#sec-11)
+12. [設定 Exa MCP](#sec-12)
+13. [設定 Scopus MCP](#sec-13)
+14. [建立本地研究工作區](#sec-14)
+15. [設定本地文獻保存規則](#sec-15)
+16. [設定 NotebookLM MCP](#sec-16)
+17. [已經裝好 NotebookLM 桌面版 / PWA 怎麼辦](#sec-17)
+18. [測試本地檔案 → NotebookLM](#sec-18)
+19. [設定「核心文獻自動導入 NotebookLM」](#sec-19)
+20. [加入 Economy Mode](#sec-20)
+21. [完整 Economy Mode 規則](#sec-21)
+22. [確認 Skill 還正常](#sec-22)
+23. [第一次測試：只跑 Phase 0](#sec-23)
+24. [正式放行 Phase 0.5](#sec-24)
+25. [完整文獻保存與 NotebookLM 流程](#sec-25)
+26. [OpenRouter 50 次/日怎麼省](#sec-26)
+27. [建立 Hermes Desktop 一鍵啟動 BAT](#sec-27)
+28. [常見錯誤與排除](#sec-28)
+29. [完整健康檢查](#sec-29)
+30. [最終完成檢查表](#sec-30)
+31. [官方與專案連結](#sec-31)
+32. [使用原則與學術倫理](#sec-32)
+
+---
+
+<a id="sec-1"></a>
+
+# 1. 最後會裝成什麼
+
+完成後大概是：
 
 ```text
 Windows 10 / 11
@@ -19,44 +62,73 @@ Windows 10 / 11
       ▼
 Hermes Agent
       │
+      ├── Hermes Desktop / CLI
+      │
       ├── OpenRouter 免費 LLM
       │
-      ├── Deep Science Writer Skill
-      ├── Remi Reviewer Skill
+      ├── deep-science-writer
+      ├── remi
       │
       ├── OpenAlex API
       ├── Semantic Scholar API
       ├── Exa MCP
-      └── Scopus MCP
+      ├── Scopus MCP
+      └── NotebookLM MCP
+              │
+              ▼
+      NotebookLM / Gemini Notebook
 ```
 
-可以做到：
+研究資料則另外保存在：
+
+```text
+Documents\
+└─ DeepResearch\
+   ├─ cache\
+   ├─ evidence\
+   ├─ papers\
+   ├─ assets\
+   ├─ reports\
+   └─ notebooklm\
+```
+
+整體工作流：
 
 ```text
 研究問題
    ↓
-自動建立搜尋策略
+Phase 0 研究藍圖
    ↓
-OpenAlex 大量找文獻
+人工批准
+   ↓
+OpenAlex 大量 discovery
+   ↓
+去重 / abstract screening
    ↓
 Scopus / Semantic Scholar / Exa 補資料
    ↓
-文獻去重與篩選
+核心全文合法取得
    ↓
-全文閱讀
+本地 papers\
    ↓
-Evidence table
+Evidence table / literature manifest
    ↓
-研究缺口
+NotebookLM 個別上傳核心文獻
    ↓
-文獻綜整
+Gap analysis
    ↓
-APA 7th Word 報告
+Remi review
+   ↓
+DOCX / report
 ```
+
+[⬆ 回到目錄](#toc)
 
 ---
 
-# 1. 費用先說清楚
+<a id="sec-2"></a>
+
+# 2. 先看費用與免費限制
 
 本教學的目標是：
 
@@ -64,30 +136,106 @@ APA 7th Word 報告
 NT$0 優先
 ```
 
-但「免費」不代表無限使用。
+但免費不等於無限。
 
-| 服務                  | 免費方式         | 主要限制              |
-| ------------------- | ------------ | ----------------- |
-| Hermes Agent        | 開源           | 免費                |
-| Deep-Research-Agent | MIT License  | 免費                |
-| OpenRouter          | Free models  | 有 request limit   |
-| OpenAlex            | Free API key | 每日免費 API 額度       |
-| Semantic Scholar    | Free API key | 初始約 1 request/sec |
-| Exa MCP             | Free MCP     | 有免費 rate limit    |
-| Scopus API          | Academic API | 受 quota / 機構權限影響  |
+| 服務 | 免費方式 | 主要限制 |
+|---|---|---|
+| Hermes Agent | 開源 | 免費 |
+| Deep-Research-Agent | 開源 | 免費 |
+| OpenRouter | Free models | 未購買 credits 通常 50 requests/day |
+| OpenAlex | 免費 API key | 每日 US$1 免費 API 額度 |
+| Semantic Scholar | 免費 API key | 初始約 1 request/sec，共用於所有 endpoints |
+| Exa MCP | 可先無 API key使用 | 免費 MCP 有服務端限制 |
+| Scopus API | Academic API key | 各 API 有 weekly quota / throttling |
+| NotebookLM | Google 免費方案 | Free plan 有 notebook / source / daily query 等限制 |
 
-因此本教學後面會額外設定 **Economy Mode**，避免 Agent 一次把所有免費額度燒光。
+目前 OpenRouter 官方 FAQ 說明：免費模型在未購買至少 US$10 credits 的帳號上，總共約 50 requests/day；若帳號曾購買至少 10 credits，免費模型上限提高到 1000 requests/day。
+
+所以本教學後面會設定：
+
+```text
+Economy Mode
+```
+
+避免 Agent 自己大量呼叫模型與 API。
+
+[⬆ 回到目錄](#toc)
 
 ---
 
-# 2. 安裝 Hermes Agent
+<a id="sec-3"></a>
+
+# 3. Hermes：桌面版與終端機版的關係
+
+Hermes 在 Windows 可以用兩種主要入口：
+
+```text
+Hermes Desktop
+```
+
+或：
+
+```text
+PowerShell → hermes
+```
+
+底層使用的是同一套 Hermes runtime、Skills 與設定。
+
+所以：
+
+```text
+平常查文獻 / 聊天 / 跑 Deep Research
+→ Hermes Desktop
+
+改 config / 測 MCP / 看真正 error
+→ PowerShell
+```
+
+如果你已經用 PowerShell 把全部東西裝好，再執行：
+
+```powershell
+hermes desktop
+```
+
+即可開啟桌面版，不需要重裝 OpenAlex、Scopus、Skills 等。
 
 官方文件：
 
-* https://hermes-agent.nousresearch.com/docs/getting-started/installation
-* https://hermes-agent.nousresearch.com/docs/user-guide/windows-native
+https://hermes-agent.nousresearch.com/docs/getting-started/installation
 
-## 2.1 開 PowerShell
+https://hermes-agent.nousresearch.com/docs/user-guide/windows-native
+
+https://hermes-agent.nousresearch.com/docs/user-guide/desktop
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-4"></a>
+
+# 4. 安裝 Hermes
+
+## 4.1 方法 A：Hermes Desktop 安裝器
+
+對完全不想碰終端機的人，官方目前建議 Windows / macOS 可直接使用 Hermes Desktop installer。
+
+官方安裝頁：
+
+https://hermes-agent.nousresearch.com/docs/getting-started/installation
+
+Desktop 第一次啟動會自動配置 Hermes runtime。
+
+如果你已經用 Desktop 安裝好，仍然可以在 PowerShell 使用：
+
+```powershell
+hermes doctor
+```
+
+以及後面的所有指令。
+
+---
+
+## 4.2 方法 B：PowerShell 原生安裝
 
 按：
 
@@ -107,192 +255,153 @@ PowerShell
 Windows Terminal
 ```
 
-**不用系統管理員權限。**
+一般不需要系統管理員權限。
 
----
+直接：
 
-## 2.2 安裝 Hermes
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
 
-因為我們打算自己設定免費模型，所以先跳過 Hermes 的預設 Setup。
-
-貼上：
+如果你想跳過第一次 setup wizard，使用：
 
 ```powershell
 & ([scriptblock]::Create((irm https://hermes-agent.nousresearch.com/install.ps1))) -SkipSetup
 ```
 
-安裝程式會處理 Hermes 所需的 Python、uv、Node.js、Git 等環境。
-
 安裝完成後：
 
-**把 PowerShell 關掉，再重新開一次。**
+```text
+關閉 PowerShell
+→ 重新開啟 PowerShell
+```
 
 ---
 
-## 2.3 檢查 Hermes
-
-輸入：
+## 4.3 檢查 Hermes
 
 ```powershell
 hermes doctor
 ```
 
-如果它提示設定需要升級，可以再跑：
+如果有 config migration：
 
 ```powershell
 hermes doctor --fix
 ```
 
-正常情況應該可以看到：
+常見正常項目：
 
 ```text
-Python Environment        ✓
-Virtual environment       ✓
-Git                       ✓
-Node.js                   ✓
-Playwright Chromium       ✓
+Python Environment
+Virtual environment
+Git
+Node.js
+ripgrep
+Playwright Chromium
 ```
 
-有些 optional 工具顯示黃色警告沒有關係。
+部分 optional 工具沒裝不代表 Hermes 壞掉。
 
-例如：
-
-```text
-docker not found
-discord.py not installed
-telegram not installed
-```
-
-目前都不用處理。
+[⬆ 回到目錄](#toc)
 
 ---
 
-# 3. 設定免費 LLM：OpenRouter
+<a id="sec-5"></a>
+
+# 5. 設定免費 LLM：OpenRouter
 
 OpenRouter：
 
-* API Key：https://openrouter.ai/keys
-* Free Models：https://openrouter.ai/models?pricing=free
-* Free Router：https://openrouter.ai/openrouter/free
-* 官方文件：https://openrouter.ai/docs/guides/routing/routers/free-router
+https://openrouter.ai/
 
-## 3.1 建立 OpenRouter API Key
-
-到：
+API Key：
 
 https://openrouter.ai/keys
 
-登入後建立 API key。
+免費模型：
 
-名稱可以填：
+https://openrouter.ai/models?pricing=free
+
+Free Router：
+
+https://openrouter.ai/openrouter/free
+
+---
+
+## 5.1 建立 API Key
+
+登入：
+
+https://openrouter.ai/keys
+
+建立一把新 key。
+
+例如名稱：
 
 ```text
 Hermes
 ```
 
-或：
+API key 通常類似：
 
 ```text
-Hermes-MyLaptop
+sk-or-v1-xxxxxxxxxxxxxxxx
 ```
 
-複製產生的 key。
-
-通常長得像：
-
-```text
-sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-⚠️ **API key 不要貼到 Discord、LINE、GitHub、README 或聊天機器人裡。**
+**不要把 key 貼到 GitHub README。**
 
 ---
 
-## 3.2 Hermes 選 OpenRouter
-
-PowerShell：
+## 5.2 Hermes 選 OpenRouter
 
 ```powershell
 hermes model
 ```
 
-找到：
+選：
 
 ```text
 OpenRouter
 ```
 
-選它。
-
-Hermes 會問：
+Hermes 問：
 
 ```text
 OPENROUTER_API_KEY:
 ```
 
-貼上剛才的 API key。
+貼入自己的 key。
 
 ---
 
-## 3.3 選免費模型
+## 5.3 選免費模型
 
-只選有：
+找模型名稱尾端：
 
 ```text
 :free
 ```
 
-的模型。
-
-例如我們實際測試過：
+例如：
 
 ```text
 nvidia/nemotron-3-super-120b-a12b:free
 ```
 
-如果未來這個模型不在免費列表，就改選其他：
+免費模型清單會變，所以不要把單一模型當永久預設。
 
-```text
-xxxxx:free
-```
-
-或選：
-
-```text
-Enter custom model name
-```
-
-輸入：
+也可以使用：
 
 ```text
 openrouter/free
 ```
 
-### 注意
-
-免費模型有時候非常塞。
-
-例如：
-
-```text
-nvidia/nemotron-3-ultra-550b-a55b:free
-```
-
-可能等超過一兩分鐘都沒有輸出。
-
-如果：
-
-```text
-60～120 秒完全沒有任何 token
-```
-
-不用硬等，換一個比較小的免費模型。
+讓 OpenRouter 自動從當下可用的免費模型選擇。
 
 ---
 
-## 3.4 測試 Hermes
-
-執行：
+## 5.4 測試
 
 ```powershell
 hermes
@@ -304,41 +413,47 @@ hermes
 Reply exactly: Hermes is working.
 ```
 
-如果得到：
+如果回：
 
 ```text
 Hermes is working.
 ```
 
-第一階段完成。
+代表模型設定成功。
 
-退出可以輸入：
+---
+
+## 5.5 免費模型很慢怎麼辦
+
+免費 provider 在尖峰時間可能：
 
 ```text
-/exit
+30 秒
+60 秒
+甚至更久
 ```
 
-或：
+都很正常。
+
+如果長時間完全沒 output：
 
 ```text
 Ctrl+C
 ```
 
+換另一個 `:free` 模型。
+
+[⬆ 回到目錄](#toc)
+
 ---
 
-# 4. 安裝 Deep-Research-Agent
+<a id="sec-6"></a>
 
-GitHub：
+# 6. 安裝 Deep-Research-Agent
+
+專案：
 
 https://github.com/CYC2002tommy/Deep-Research-Agent
-
-不要使用：
-
-```text
-hermes skills install ...
-```
-
-我們直接照專案作者 README 的方式 clone 整個 repo。
 
 PowerShell：
 
@@ -346,99 +461,92 @@ PowerShell：
 cd "$env:LOCALAPPDATA\hermes\skills"
 ```
 
-下載：
+clone：
 
 ```powershell
 git clone https://github.com/CYC2002tommy/Deep-Research-Agent.git
 ```
 
-完成後檢查：
+確認：
 
 ```powershell
 Get-ChildItem "$env:LOCALAPPDATA\hermes\skills\Deep-Research-Agent\skills"
 ```
 
-應該有：
+應該看到：
 
 ```text
 deep-science-writer
 remi
 ```
 
-接著：
+再：
 
 ```powershell
 hermes skills list
 ```
 
-應該看到：
+應看到兩個 skill 是：
 
 ```text
-deep-science-writer   local   enabled
-remi                  local   enabled
+enabled
 ```
 
-看到這兩個就表示 Skill 安裝成功。
+[⬆ 回到目錄](#toc)
 
 ---
 
-# 5. 安裝 Python dependencies
+<a id="sec-7"></a>
 
-Deep-Research-Agent 還需要：
+# 7. 安裝 Python dependencies
 
-```text
-python-docx
-PyMuPDF
-requests
-matplotlib
-seaborn
-pandas
-duckduckgo_search
-```
+Deep-Research-Agent 需要 Python packages。
 
-Hermes 的 Python 環境不一定有 `pip`。
+不要假設 Hermes venv 裡一定有 pip。
 
-所以不要使用：
-
-```powershell
-python -m pip
-```
-
-如果看到：
-
-```text
-No module named pip
-```
-
-不是壞掉。
-
-直接使用 Hermes 已安裝的 `uv`。
-
-貼：
+直接使用 `uv`：
 
 ```powershell
 uv pip install --python "$env:LOCALAPPDATA\hermes\hermes-agent\venv\Scripts\python.exe" -r "$env:LOCALAPPDATA\hermes\skills\Deep-Research-Agent\requirements.txt"
 ```
 
-完成後測試：
+測試：
 
 ```powershell
 & "$env:LOCALAPPDATA\hermes\hermes-agent\venv\Scripts\python.exe" -c "import docx, fitz, requests, matplotlib, seaborn, pandas, duckduckgo_search; print('Deep Research Python deps OK')"
 ```
 
-如果看到：
+成功應看到：
 
 ```text
 Deep Research Python deps OK
 ```
 
-完成。
+若：
+
+```text
+No module named pip
+```
+
+不用補 pip。
+
+繼續用：
+
+```text
+uv pip
+```
+
+即可。
+
+[⬆ 回到目錄](#toc)
 
 ---
 
-# 6. 設定 API Key 檔案
+<a id="sec-8"></a>
 
-Hermes 的 key 放在：
+# 8. API Key 安全與 `.env`
+
+Hermes 的環境變數檔：
 
 ```text
 %LOCALAPPDATA%\hermes\.env
@@ -450,7 +558,7 @@ Hermes 的 key 放在：
 notepad "$env:LOCALAPPDATA\hermes\.env"
 ```
 
-之後我們會慢慢加入：
+後面會加入：
 
 ```text
 OPENALEX_API_KEY=
@@ -458,33 +566,64 @@ SEMANTIC_SCHOLAR_API_KEY=
 SCOPUS_API_KEY=
 ```
 
-⚠️ `.env` 是密碼檔。
+**`.env` 等同密碼檔。**
 
-**永遠不要上傳 GitHub。**
+不要：
+
+```text
+❌ 上傳 GitHub
+❌ 貼 Discord
+❌ 貼 LINE 群
+❌ 放 README
+❌ 公開截圖
+```
+
+如果自己的 repo 裡有 `.env`，`.gitignore` 至少加入：
+
+```gitignore
+.env
+*.env
+```
+
+[⬆ 回到目錄](#toc)
 
 ---
 
-# 7. OpenAlex
+<a id="sec-9"></a>
 
-OpenAlex：
+# 9. 設定 OpenAlex
 
-* 官網：https://openalex.org/
-* API Key：https://openalex.org/settings/api
-* API 文件：https://developers.openalex.org/
+官方：
 
-OpenAlex 建議當作**大量文獻 discovery 的主力**。
+https://openalex.org/
+
+API Key：
+
+https://openalex.org/settings/api
+
+開發文件：
+
+https://developers.openalex.org/
+
+OpenAlex 很適合當：
+
+```text
+Primary Broad Discovery
+```
+
+也就是大量初篩的主力。
 
 ---
 
-## 7.1 取得 API key
+## 9.1 取得 key
 
 登入：
 
 https://openalex.org/settings/api
 
-複製 API key。
+複製 key。
 
-開：
+打開：
 
 ```powershell
 notepad "$env:LOCALAPPDATA\hermes\.env"
@@ -496,128 +635,82 @@ notepad "$env:LOCALAPPDATA\hermes\.env"
 OPENALEX_API_KEY=你的API_KEY
 ```
 
-例如：
-
-```text
-OPENALEX_API_KEY=xxxxxxxxxxxxxxxx
-```
-
-不要加引號。
-
 ---
 
-## 7.2 測試 OpenAlex 額度
-
-PowerShell：
+## 9.2 測試額度
 
 ```powershell
 $key = (Get-Content "$env:LOCALAPPDATA\hermes\.env" | Where-Object { $_ -like 'OPENALEX_API_KEY=*' }) -replace '^OPENALEX_API_KEY=',''
 ```
 
-再：
-
 ```powershell
 Invoke-RestMethod "https://api.openalex.org/rate-limit?api_key=$key"
 ```
 
-正常會看到：
-
-```text
-daily_budget_usd
-daily_used_usd
-daily_remaining_usd
-```
-
 ---
 
-## 7.3 真正搜尋論文
-
-例如：
+## 9.3 真正搜尋
 
 ```powershell
 Invoke-RestMethod "https://api.openalex.org/works?search=stroboscopic%20visual%20training&per_page=3&api_key=$key"
 ```
 
-如果看到：
+看到：
 
 ```text
 meta
 results
 ```
 
-就表示成功。
+就成功。
+
+目前 OpenAlex 免費 key 為每日 US$1 API 免費使用額度；不同操作成本不同。
+
+[⬆ 回到目錄](#toc)
 
 ---
 
-# 8. Semantic Scholar
+<a id="sec-10"></a>
+
+# 10. 設定 Semantic Scholar
 
 官方：
 
 https://www.semanticscholar.org/product/api
 
-API key **不是登入帳號後直接產生**。
+API tutorial：
 
-要按：
+https://www.semanticscholar.org/product/api/tutorial
+
+---
+
+## 10.1 申請 API Key
+
+到：
+
+https://www.semanticscholar.org/product/api
+
+找到：
 
 ```text
 Request an API Key
 ```
 
-填申請表。
-
----
-
-## 8.1 先測匿名 API
-
-在申請 API key 前，可以先跑：
-
-```powershell
-Invoke-RestMethod "https://api.semanticscholar.org/graph/v1/paper/search?query=stroboscopic%20visual%20training&limit=3&fields=title,year,authors,abstract,citationCount,url,openAccessPdf"
-```
-
-如果成功，就可以在申請表勾：
+用途可以寫：
 
 ```text
-I have already successfully made unauthenticated requests
+I plan to use the Semantic Scholar API as part of a personal,
+non-commercial academic research workflow for literature discovery,
+metadata retrieval, citation analysis, and evidence synthesis.
+
+The project is used by a single researcher. Requests will use batch
+endpoints where appropriate, local caching, deduplication, and
+rate-limit-aware retry logic.
 ```
 
 ---
 
-## 8.2 API Key 申請表範例
-
-如果它問：
-
-### How do you plan to use Semantic Scholar API in your project?
-
-可以貼：
-
-```text
-I plan to use the Semantic Scholar API as part of a personal, non-commercial academic research workflow for literature discovery and evidence synthesis, primarily in sports science and related research areas. The API will be used to search for relevant scholarly papers and retrieve metadata such as titles, authors, publication years, abstracts, citation counts, references, citations, DOIs, URLs, and open-access PDF information. The project is used by a single researcher. Requests will be structured efficiently using search and batch endpoints where appropriate, with local caching to avoid duplicate requests. I will respect the API rate limit and implement exponential backoff for rate-limit or transient errors.
-```
-
-### Which endpoints do you plan to use?
-
-```text
-/graph/v1/paper/search
-/graph/v1/paper/{paper_id}
-/graph/v1/paper/batch
-/graph/v1/paper/{paper_id}/citations
-/graph/v1/paper/{paper_id}/references
-```
-
-### Requests per day
-
-個人研究可以先填：
-
-```text
-200
-```
-
----
-
-## 8.3 收到 key 後
-
-開：
+## 10.2 收到 key 後
 
 ```powershell
 notepad "$env:LOCALAPPDATA\hermes\.env"
@@ -631,17 +724,14 @@ SEMANTIC_SCHOLAR_API_KEY=你的KEY
 
 ---
 
-## 8.4 測試 authenticated request
+## 10.3 測試 authenticated request
 
 ```powershell
 $s2key = (Get-Content "$env:LOCALAPPDATA\hermes\.env" | Where-Object { $_ -like 'SEMANTIC_SCHOLAR_API_KEY=*' }) -replace '^SEMANTIC_SCHOLAR_API_KEY=',''
-```
-
-```powershell
 $headers = @{ "x-api-key" = $s2key }
 ```
 
-測：
+測試：
 
 ```powershell
 Invoke-RestMethod `
@@ -649,15 +739,24 @@ Invoke-RestMethod `
   -Headers $headers
 ```
 
-有 paperId 和 title 就成功。
+看到：
+
+```text
+paperId
+title
+```
+
+就成功。
+
+[⬆ 回到目錄](#toc)
 
 ---
 
-# 9. Semantic Scholar 如何避免 429
+<a id="sec-11"></a>
 
-這是最重要的一段。
+# 11. Semantic Scholar 限流保護
 
-Semantic Scholar 新 API key 初始大約只有：
+Semantic Scholar 官方目前說明：API key 的 introductory rate limit 約：
 
 ```text
 1 request / second
@@ -666,10 +765,10 @@ Semantic Scholar 新 API key 初始大約只有：
 而且是：
 
 ```text
-所有 endpoint 共用
+所有 endpoints 共用
 ```
 
-所以不要：
+因此不要做：
 
 ```text
 Agent A → 1 req/s
@@ -677,33 +776,33 @@ Agent B → 1 req/s
 Agent C → 1 req/s
 ```
 
-這樣伺服器看到的是：
+因為實際變成：
 
 ```text
 3 req/s
 ```
 
-然後：
+容易得到：
 
 ```text
-429 Too Many Requests
+HTTP 429 Too Many Requests
 ```
 
 ---
 
 ## 正確策略
 
-### 1. OpenAlex 做大量搜尋
+### 1. OpenAlex 先主搜
 
 ```text
 OpenAlex
 ↓
-先找 40～100 篇
+抓 40～60+ candidates
 ```
 
 ### 2. 先去重
 
-依：
+依序：
 
 ```text
 DOI
@@ -712,78 +811,61 @@ OpenAlex ID
 normalized title
 ```
 
-去重。
+### 3. S2 只補重要文獻
 
-### 3. Semantic Scholar 只查剩下重要的 10～30 篇
+不要拿 S2 當第一個大量 scanner。
 
-### 4. 能 batch 就 batch
+### 4. 優先 Batch
 
-優先：
+例如：
 
 ```text
-/paper/batch
+/graph/v1/paper/batch
 ```
 
-而不是一篇一 request。
+一次最多可以處理多筆 paper IDs，比逐篇 request 省很多。
 
-### 5. Request 間隔至少
+### 5. 每次 request 至少間隔
 
 ```text
 1.25 秒
 ```
 
-### 6. 遇到 429
-
-不要狂按重新送出。
-
-建議：
+### 6. 429 backoff
 
 ```text
-第一次 429 → 等 5 秒
-第二次     → 10 秒
-第三次     → 20 秒
-第四次     → 40 秒
-第五次     → 80 秒
+5 秒
+10 秒
+20 秒
+40 秒
+80 秒
 ```
 
-也就是：
+不要用多帳號、多 key、多 IP 去繞過 rate limit。
 
-```text
-exponential backoff
-```
-
-如果你手動測到 429：
-
-**放著幾分鐘再試。**
-
-不要一直測。
+[⬆ 回到目錄](#toc)
 
 ---
 
-# 10. Exa MCP
+<a id="sec-12"></a>
 
-官方：
+# 12. 設定 Exa MCP
 
-* https://exa.ai/mcp
-* https://exa.ai/docs/reference/exa-mcp
+Exa MCP：
 
-Exa MCP 可以先不用 API key。
+https://exa.ai/mcp
 
----
+Exa docs：
 
-## 10.1 開 Hermes config
+https://exa.ai/docs/reference/exa-mcp
+
+先使用官方 remote MCP，不一定要自己申請 Exa API key。
+
+開：
 
 ```powershell
 notepad "$env:LOCALAPPDATA\hermes\config.yaml"
 ```
-
-找到：
-
-```yaml
-mcp_servers:
-```
-
-如果沒有，就自己加。
 
 加入：
 
@@ -796,26 +878,31 @@ mcp_servers:
     supports_parallel_tool_calls: false
 ```
 
-⚠️ YAML 非常在意縮排。
+如果原本已經有：
 
-`exa:` 前面是兩格空白。
+```yaml
+mcp_servers:
+```
+
+不要建立第二個。
+
+只把 `exa:` 放進原本的 `mcp_servers:` 底下。
 
 ---
 
-## 10.2 測試 Exa
+## 測試
 
 ```powershell
 hermes mcp test exa
 ```
 
-正常應該看到：
+成功應看到：
 
 ```text
 Connected
-Tools discovered: 3
 ```
 
-以及：
+以及類似：
 
 ```text
 web_search_exa
@@ -823,9 +910,7 @@ web_search_advanced_exa
 web_fetch_exa
 ```
 
----
-
-## 10.3 真正測一次
+真正測試：
 
 ```powershell
 hermes
@@ -834,30 +919,19 @@ hermes
 輸入：
 
 ```text
-Use the Exa MCP tool web_search_exa to find 3 scholarly sources about stroboscopic visual training. Return only title, year, DOI or URL, and source.
+Use the Exa MCP tool web_search_exa to find 3 scholarly sources
+about stroboscopic visual training.
+
+Return only title, year, DOI or URL, and source.
 ```
 
-如果 Hermes 有出現：
-
-```text
-mcp__exa__web_search_exa
-```
-
-就成功。
-
-如果 Exa 出現：
-
-```text
-429
-```
-
-代表免費 MCP 暫時撞 rate limit。
-
-之後才考慮申請自己的 Exa API key。
+[⬆ 回到目錄](#toc)
 
 ---
 
-# 11. Scopus / Elsevier API
+<a id="sec-13"></a>
+
+# 13. 設定 Scopus MCP
 
 Elsevier Developer Portal：
 
@@ -869,17 +943,15 @@ https://github.com/qwe4559999/scopus-mcp
 
 ---
 
-## 11.1 申請 Elsevier API Key
-
-使用學校 / 教育機構帳號比較合適。
+## 13.1 申請 Elsevier API Key
 
 到：
 
 https://dev.elsevier.com/
 
-申請 API key。
+使用學校 / 教育機構身分比較適合。
 
-Application Name 可以填：
+Application Name 可填：
 
 ```text
 Deep Research Agent - Academic Literature Review
@@ -888,7 +960,8 @@ Deep Research Agent - Academic Literature Review
 用途：
 
 ```text
-Personal non-commercial academic research project for literature discovery, metadata retrieval, citation analysis, and evidence synthesis.
+Personal non-commercial academic research project for literature
+discovery, metadata retrieval, citation analysis, and evidence synthesis.
 ```
 
 取得 key 後：
@@ -905,15 +978,13 @@ SCOPUS_API_KEY=你的API_KEY
 
 ---
 
-# 12. 設定 Scopus MCP
-
-開：
+## 13.2 加入 Hermes MCP
 
 ```powershell
 notepad "$env:LOCALAPPDATA\hermes\config.yaml"
 ```
 
-最後建議會長這樣：
+若 Exa 已經存在，完整可類似：
 
 ```yaml
 mcp_servers:
@@ -938,50 +1009,49 @@ mcp_servers:
 
 ---
 
-## 為什麼 Scopus 要寫 `mcp<2`？
+## 13.3 為什麼有 `mcp>=1.0,<2`
 
-截至 2026-08，目前 `scopus-mcp` 有一個 MCP SDK 2.x 相容性問題。
-
-相關 issue / PR：
-
-https://github.com/qwe4559999/scopus-mcp/pull/12
+目前 `scopus-mcp` 發布版本曾遇到 MCP SDK 2.x 相容問題。
 
 如果直接：
 
-```yaml
-args: ["scopus-mcp"]
+```text
+uvx scopus-mcp
 ```
 
-可能得到：
+可能看到：
 
 ```text
-Connection failed: Connection closed
+Connection closed
 ```
 
-所以目前暫時固定：
+目前 workaround：
 
 ```text
 mcp>=1.0,<2
 ```
 
-未來上游修好後可能不再需要這個 workaround。
+相關 PR：
+
+https://github.com/qwe4559999/scopus-mcp/pull/12
+
+未來上游正式修好後，這個 workaround 可能可以拿掉。
 
 ---
 
-## 12.1 測試 Scopus MCP
+## 13.4 測試
 
 ```powershell
 hermes mcp test scopus
 ```
 
-成功時應該看到：
+成功應看到：
 
 ```text
 Connected
-Tools discovered: 5
 ```
 
-例如：
+以及目前常見工具：
 
 ```text
 search_scopus
@@ -991,27 +1061,9 @@ get_citing_papers
 get_quota_status
 ```
 
-如果看到：
-
-```text
-Auth: none
-```
-
-不一定有問題。
-
-因為這是：
-
-```text
-stdio MCP
-```
-
-Scopus key 是透過 environment variable 傳給 subprocess。
-
 ---
 
-## 12.2 測 Scopus 真正搜尋
-
-啟動：
+## 13.5 真正搜尋
 
 ```powershell
 hermes
@@ -1021,97 +1073,70 @@ hermes
 
 ```text
 Use the Scopus MCP tool search_scopus to search for:
+
 TITLE-ABS-KEY("stroboscopic visual training")
 
-Return only the first 5 results with title, year, authors, Scopus ID, DOI, and citation count.
+Return only the first 5 results with title, year, authors,
+Scopus ID, DOI, and citation count.
 ```
-
-如果有：
-
-```text
-mcp__scopus__search_scopus
-```
-
-而且回文獻，就成功。
 
 ---
 
-## 12.3 看 Scopus quota
-
-在同一個 Hermes 裡：
+## 13.6 看 quota
 
 ```text
-Use the Scopus MCP get_quota_status tool and show me the current quota limit, remaining quota, and reset time.
+Use the Scopus MCP get_quota_status tool and show me the current
+quota limit, remaining quota, and reset time.
 ```
 
-不同 Scopus API 的 quota 不完全相同。
+Elsevier 官方 quota 是：
 
-所以大量研究前可以先查一次。
+```text
+不同 API 各自計算
+通常每 7 天重置
+```
+
+不是整把 key 只有一個統一 quota。
 
 ---
 
-# 13. Scopus 校外連線注意
+## 13.7 校外網路注意
 
-Elsevier 的：
-
-```text
-API key
-```
-
-和：
+API key：
 
 ```text
+≠
 institutional entitlement
 ```
 
-不是完全相同的東西。
-
-如果：
+所以可能出現：
 
 ```text
 key 有效
+但部分 Scopus subscriber 功能不允許
 ```
 
-但某些 Scopus 功能：
+這可能跟：
 
 ```text
-Unauthorized
-Insufficient privileges
+校內 IP / institution entitlement
 ```
 
-可能不是程式壞掉。
+有關。
 
-Scopus 的部分訂閱權限會依：
-
-```text
-學校 / 機構 IP
-```
-
-判定。
-
-所以：
-
-```text
-校內網路
-```
-
-可能比：
-
-```text
-家裡網路
-```
-
-得到更多 subscriber entitlement。
-
-官方說明：
+官方：
 
 https://dev.elsevier.com/tecdoc_api_authentication.html
 
+[⬆ 回到目錄](#toc)
+
 ---
 
-# 14. 建立研究工作區
+<a id="sec-14"></a>
 
-不要在：
+# 14. 建立本地研究工作區
+
+不要從 Hermes 自己的：
 
 ```text
 AppData\Local\hermes\hermes-agent
@@ -1123,738 +1148,9 @@ AppData\Local\hermes\hermes-agent
 venv
 ```
 
-裡面開始研究。
+裡開始做研究。
 
-建立自己的資料夾：
-
-```powershell
-New-Item -ItemType Directory -Force "$env:USERPROFILE\Documents\DeepResearch" | Out-Null
-```
-
-再建立：
-
-```powershell
-New-Item -ItemType Directory -Force `
-"$env:USERPROFILE\Documents\DeepResearch\cache", `
-"$env:USERPROFILE\Documents\DeepResearch\evidence", `
-"$env:USERPROFILE\Documents\DeepResearch\papers", `
-"$env:USERPROFILE\Documents\DeepResearch\assets", `
-"$env:USERPROFILE\Documents\DeepResearch\reports" | Out-Null
-```
-
-以後：
-
-```powershell
-cd "$env:USERPROFILE\Documents\DeepResearch"
-```
-
-再：
-
-```powershell
-hermes
-```
-
----
-
-## 為什麼？
-
-如果從 Hermes 原始程式目錄啟動，有可能看到：
-
-```text
-AGENTS.md TRUNCATED
-80000 chars exceeds limit...
-```
-
-代表 Hermes 把自己的開發文件當成你的 project context。
-
-這會：
-
-```text
-浪費 context window
-```
-
-所以研究時固定從：
-
-```text
-Documents\DeepResearch
-```
-
-啟動。
-
----
-
-# 15. 免費額度保護：Economy Mode
-
-原始 Deep-Research-Agent 比較偏完整大型研究：
-
-```text
-100+ candidates
-20～30+ full texts
-多 Agent
-多 API
-```
-
-免費模型和免費 API 很容易吃不消。
-
-建議第一次使用先改成 Economy Mode。
-
----
-
-## 15.1 備份 Skill
-
-```powershell
-$skill = "$env:LOCALAPPDATA\hermes\skills\Deep-Research-Agent\skills\deep-science-writer\SKILL.md"
-```
-
-```powershell
-Copy-Item $skill "$skill.original.bak"
-```
-
-開：
-
-```powershell
-notepad $skill
-```
-
----
-
-## 15.2 取得自己的 Windows 使用者路徑
-
-輸入：
-
-```powershell
-$env:USERPROFILE
-```
-
-例如：
-
-```text
-C:\Users\john
-```
-
-下面範例的：
-
-```text
-C:/Users/YOUR_USERNAME/
-```
-
-請改成自己的路徑。
-
----
-
-## 15.3 在 Skill 前面加入
-
-找到：
-
-```markdown
-# Deep Science Writer (End-to-End Pipeline)
-```
-
-在下面加入：
-
-```markdown
-## LOCAL RUNTIME POLICY — WINDOWS / ECONOMY MODE
-
-This local policy overrides conflicting rules later in this skill.
-
-### Environment
-- Platform: Windows.
-- Research workspace: `C:/Users/YOUR_USERNAME/Documents/DeepResearch/`
-- Store project outputs, caches, evidence tables, papers, and reports under this workspace.
-- Never require a `D:/` drive.
-- Default final document:
-  `C:/Users/YOUR_USERNAME/Documents/DeepResearch/reports/Research_Report.docx`
-
-### Economy Mode
-Economy Mode is enabled by default.
-
-For normal exploratory research:
-- Initial candidate pool: approximately 40–60 papers.
-- Targeted full-text set: approximately 8–12 high-relevance papers.
-- Expand further only after explicit user approval.
-- Reuse previously retrieved data before issuing new API requests.
-- Cache API responses whenever practical.
-- Avoid repeated searches that answer the same question.
-
-### OpenAlex
-- Use OpenAlex as the primary broad-discovery source.
-- Perform high-volume first-pass searching here.
-- Deduplicate using DOI, PMID, OpenAlex ID, or normalized title.
-- Prefer `per_page=100`.
-- Cache results locally.
-
-### Semantic Scholar
-- Semantic Scholar is supplemental, not the primary high-volume discovery system.
-- Prefer batch/bulk endpoints.
-- Never issue concurrent Semantic Scholar API requests.
-- Maintain at least 1.25 seconds between requests.
-- Query only papers remaining after OpenAlex deduplication when possible.
-- Cache responses by DOI or Semantic Scholar Paper ID.
-- Request only required fields.
-
-On HTTP 429:
-1. Stop sending Semantic Scholar requests.
-2. Wait 5 seconds.
-3. Retry.
-4. If another 429 occurs, wait 10, 20, 40, then 80 seconds.
-5. Never attempt to bypass rate limits using multiple accounts, API keys, or IP addresses.
-
-### Scopus
-- Use Scopus primarily for detailed metadata, indexing verification, citation information, and cross-checking.
-- Avoid repeating broad searches already covered adequately by OpenAlex.
-- Reuse cached MCP responses.
-- Check API quota during large jobs.
-
-### Exa
-- Use Exa for supplementary scholarly-web discovery, open-access discovery, institutional repositories, and missing URLs.
-- Do not repeatedly search information already available from OpenAlex, Scopus, or Semantic Scholar.
-
-### Parallelism
-- Maximum default LLM subagent concurrency in Economy Mode: 2.
-- Do not allow parallel Semantic Scholar requests.
-- Prefer scripts and batch API calls over spawning many LLM workers.
-- Full multi-agent research is allowed only after explicit user approval.
-
-### Full Text
-Use this order:
-1. Legitimate open-access publisher copy.
-2. Institutional repository.
-3. Unpaywall / OpenAlex open-access location.
-4. Legitimate institutional access.
-5. Ask the user to obtain or provide the paper.
-
-Do not bypass paywalls, authentication controls, robots restrictions, or other access controls.
-
-If full text is unavailable, record it as unavailable.
-
-Never claim to have full-text verified a result when only an abstract was available.
-
-### Optional Integrations
-The following MUST NOT block the basic research workflow:
-- Zotero
-- NotebookLM
-- Obsidian
-- visualization tools
-
-Skip them when they are not configured.
-
-### Evidence Integrity
-- A valid DOI proves a publication exists; it does not prove that a claim is supported.
-- Distinguish metadata verification, abstract verification, and full-text verification.
-- Never fabricate unavailable methods, results, sample sizes, effect sizes, or conclusions.
-```
-
-存檔。
-
----
-
-# 16. 確認 Skill 還活著
-
-```powershell
-hermes skills list
-```
-
-要看到：
-
-```text
-deep-science-writer   local   enabled
-remi                  local   enabled
-```
-
----
-
-# 17. 第一次測試：只跑 Phase 0
-
-進工作區：
-
-```powershell
-cd "$env:USERPROFILE\Documents\DeepResearch"
-```
-
-啟動：
-
-```powershell
-hermes
-```
-
-貼：
-
-```text
-Please use the deep-science-writer skill in ECONOMY MODE to research the effects of stroboscopic visual training on sports performance.
-
-Focus on:
-- trained or competitive athletes
-- perceptual and cognitive outcomes
-- reaction and visual-attention outcomes
-- motor or sport-specific performance
-- evidence of transfer to actual sport performance
-- methodological limitations and research gaps
-
-Use OpenAlex as the primary broad-discovery database, with Scopus, Exa, and Semantic Scholar as complementary sources according to the local Economy Mode policy.
-
-For this turn, execute Phase 0 ONLY.
-
-1. Clarify the research scope if necessary.
-2. Propose search concepts and keyword combinations.
-3. Define inclusion and exclusion criteria.
-4. Explain how each database will be used.
-5. Propose the planned structure of the final review.
-6. Estimate the number of candidate papers and full-text papers to be examined.
-
-STOP after presenting the research blueprint.
-
-Do NOT begin Phase 0.5.
-Do NOT launch subagents.
-Do NOT perform large-scale literature retrieval until I explicitly approve.
-```
-
----
-
-## 正常結果
-
-它應該先給你：
-
-```text
-Research scope
-Search terms
-Inclusion criteria
-Exclusion criteria
-Database strategy
-Review structure
-Expected paper numbers
-```
-
-而不是立刻狂打 API。
-
-Economy Mode 大概應該規劃：
-
-```text
-40～60 initial candidates
-8～12 deep-read papers
-```
-
-最後要停下來問：
-
-```text
-Do you approve this blueprint?
-```
-
-這表示成功。
-
----
-
-# 18. 正式放行 Phase 0.5
-
-如果 Blueprint 沒問題，再回：
-
-```text
-I approve this research blueprint.
-
-Proceed to Phase 0.5 in ECONOMY MODE.
-
-Follow the local runtime policy strictly:
-- use OpenAlex as the primary broad-discovery source;
-- respect all Semantic Scholar rate limits and caching rules;
-- avoid duplicate API requests;
-- do not bypass paywalls or access controls;
-- store all outputs under my Documents/DeepResearch workspace;
-- stop after completing the Phase 0.5 Selection Rationale, Research Gap, and Topic Enhancement report;
-- wait for my approval before proceeding further.
-```
-
-建議第一次：
-
-```text
-一個 Phase 一個 Phase 放行
-```
-
-不要直接讓它一路跑到底。
-
----
-
-# 19. 常見錯誤
-
-## 問題 1
-
-```text
-No module named pip
-```
-
-### 解法
-
-不要補 pip。
-
-使用：
-
-```powershell
-uv pip install ...
-```
-
-Hermes 本身就是由 uv 管理 Python。
-
----
-
-# 問題 2
-
-```text
-Could not fetch CYC2002tommy/Deep-Research-Agent/...
-```
-
-### 解法
-
-不要用：
-
-```text
-hermes skills install
-```
-
-直接：
-
-```powershell
-cd "$env:LOCALAPPDATA\hermes\skills"
-git clone https://github.com/CYC2002tommy/Deep-Research-Agent.git
-```
-
----
-
-# 問題 3
-
-Semantic Scholar：
-
-```text
-429 Too Many Requests
-```
-
-### 解法
-
-停。
-
-不要馬上 retry。
-
-等：
-
-```text
-5 → 10 → 20 → 40 → 80 秒
-```
-
-而且：
-
-```text
-OpenAlex 主搜
-Semantic Scholar 補資料
-```
-
-不要反過來。
-
----
-
-# 問題 4
-
-Scopus：
-
-```text
-Connection failed
-Connection closed
-```
-
-先確認使用：
-
-```yaml
-args:
-  - "--with"
-  - "mcp>=1.0,<2"
-  - "scopus-mcp"
-```
-
-如果還不行，直接手動測：
-
-```powershell
-uvx --with "mcp>=1.0,<2" scopus-mcp
-```
-
-這樣可以看到真正的 Python error。
-
----
-
-# 問題 5
-
-免費模型：
-
-```text
-waiting 150s with no output
-```
-
-不是你的電腦太爛。
-
-免費 provider 可能正在塞車。
-
-換其他：
-
-```text
-:free
-```
-
-模型。
-
----
-
-# 問題 6
-
-```text
-AGENTS.md TRUNCATED
-```
-
-表示你可能從錯的資料夾啟動 Hermes。
-
-先：
-
-```powershell
-cd "$env:USERPROFILE\Documents\DeepResearch"
-```
-
-再：
-
-```powershell
-hermes
-```
-
----
-
-# 問題 7
-
-Scopus API key 有效，但功能被拒絕
-
-可能是：
-
-```text
-institutional entitlement
-```
-
-問題。
-
-尤其：
-
-```text
-校內網路
-```
-
-和：
-
-```text
-家裡網路
-```
-
-可能有差。
-
-Elsevier 官方：
-
-https://dev.elsevier.com/tecdoc_api_authentication.html
-
----
-
-# 20. API Key 安全
-
-API key 等同密碼。
-
-不要：
-
-```text
-❌ 貼 Discord
-❌ 貼 LINE 群
-❌ 截圖公開
-❌ commit 到 GitHub
-❌ 寫進 README
-```
-
-集中放：
-
-```text
-%LOCALAPPDATA%\hermes\.env
-```
-
-Git repo 如果自己有 `.env`，一定在 `.gitignore` 加：
-
-```gitignore
-.env
-*.env
-```
-
----
-
-# 21. 最終健康檢查
-
-## Hermes
-
-```powershell
-hermes doctor
-```
-
-## Skills
-
-```powershell
-hermes skills list
-```
-
-要有：
-
-```text
-deep-science-writer
-remi
-```
-
-## Exa
-
-```powershell
-hermes mcp test exa
-```
-
-要：
-
-```text
-Connected
-```
-
-## Scopus
-
-```powershell
-hermes mcp test scopus
-```
-
-要：
-
-```text
-Connected
-Tools discovered: 5
-```
-
-## OpenAlex
-
-```powershell
-$key = (Get-Content "$env:LOCALAPPDATA\hermes\.env" | Where-Object { $_ -like 'OPENALEX_API_KEY=*' }) -replace '^OPENALEX_API_KEY=',''
-Invoke-RestMethod "https://api.openalex.org/rate-limit?api_key=$key"
-```
-
-## Semantic Scholar
-
-```powershell
-$s2key = (Get-Content "$env:LOCALAPPDATA\hermes\.env" | Where-Object { $_ -like 'SEMANTIC_SCHOLAR_API_KEY=*' }) -replace '^SEMANTIC_SCHOLAR_API_KEY=',''
-$headers = @{ "x-api-key" = $s2key }
-
-Invoke-RestMethod `
-  -Uri "https://api.semanticscholar.org/graph/v1/paper/DOI:10.3758/s13414-012-0344-6?fields=title,year,citationCount" `
-  -Headers $headers
-```
-
----
-
-# 22. 完成檢查表
-
-* [ ] Hermes Agent 已安裝
-* [ ] `hermes doctor` 正常
-* [ ] OpenRouter API key 已設定
-* [ ] 免費模型可以回答
-* [ ] Deep-Research-Agent 已 clone
-* [ ] `deep-science-writer` enabled
-* [ ] `remi` enabled
-* [ ] Python dependencies OK
-* [ ] OpenAlex API 測試成功
-* [ ] Semantic Scholar API 測試成功
-* [ ] Exa MCP Connected
-* [ ] Scopus MCP Connected
-* [ ] Scopus 真實搜尋成功
-* [ ] 建立 `Documents\DeepResearch`
-* [ ] 加入 Economy Mode
-* [ ] Phase 0 測試成功
-* [ ] Agent 能停下等待人工批准
-
-全部打勾：
-
-```text
-你可以開始正式玩 Deep Research 了。
-```
-
----
-
-# 23. 官方 / 專案文件
-
-## Hermes Agent
-
-https://hermes-agent.nousresearch.com/
-
-https://hermes-agent.nousresearch.com/docs/getting-started/installation
-
-https://hermes-agent.nousresearch.com/docs/user-guide/windows-native
-
-https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp
-
-## Deep-Research-Agent
-
-https://github.com/CYC2002tommy/Deep-Research-Agent
-
-## OpenRouter
-
-https://openrouter.ai/
-
-https://openrouter.ai/keys
-
-https://openrouter.ai/models?pricing=free
-
-https://openrouter.ai/docs/guides/routing/routers/free-router
-
-## OpenAlex
-
-https://openalex.org/
-
-https://openalex.org/settings/api
-
-https://developers.openalex.org/
-
-## Semantic Scholar
-
-https://www.semanticscholar.org/
-
-https://www.semanticscholar.org/product/api
-
-https://www.semanticscholar.org/product/api/tutorial
-
-## Exa
-
-https://exa.ai/mcp
-
-https://exa.ai/docs/reference/exa-mcp
-
-## Elsevier / Scopus
-
-https://dev.elsevier.com/
-
-https://dev.elsevier.com/api_key_settings.html
-
-https://dev.elsevier.com/tecdoc_api_authentication.html
-
-## Scopus MCP
-
-https://github.com/qwe4559999/scopus-mcp
-
-目前 MCP 2.x 相容問題：
-
-https://github.com/qwe4559999/scopus-mcp/pull/
-
-
-NotebookLM + 本地文獻儲存
-
-> 建議把本章插在原 README 的「建立研究工作區」之後、「Economy Mode」之前。
-> 
-> 本章以 Windows 10/11 + Hermes Agent + Deep-Research-Agent 為例。
-> 
-> NotebookLM MCP 為第三方工具，不是 Google 官方 NotebookLM API。請自行評估帳號安全與使用風險。
-
-────────
-
-15. 設定本地文獻儲存
-
-Deep Research 不建議只把搜尋結果留在聊天紀錄裡。建議把每次研究產生的 metadata、DOI/URL、篩選結果、Evidence table、合法取得的全文 PDF、最終報告與 NotebookLM 匯入紀錄全部保存在固定工作區。
-
-15.1 建立工作區
+建立：
 
 ```powershell
 $root = "$env:USERPROFILE\Documents\DeepResearch"
@@ -1871,32 +1167,64 @@ New-Item -ItemType Directory -Force `
 完成後：
 
 ```text
-Documents\
-└─ DeepResearch\
-   ├─ cache\
-   ├─ evidence\
-   ├─ papers\
-   ├─ assets\
-   ├─ reports\
-   └─ notebooklm\
+DeepResearch\
+├─ cache\
+├─ evidence\
+├─ papers\
+├─ assets\
+├─ reports\
+└─ notebooklm\
 ```
 
-用途：
+---
+
+## 各資料夾用途
 
 ```text
-cache\      → API 回應、暫存資料
-evidence\   → literature_manifest.csv、evidence tables、screening results、DOI/metadata verification
-papers\     → 合法取得的 PDF 全文
-assets\     → 圖表、圖片、流程圖
-reports\    → Phase 0 / Phase 0.5 / final report / DOCX
-notebooklm\ → NotebookLM 上傳紀錄、notebook 名稱、來源清單
+cache\
+→ API cache / 暫存 JSON
+
+evidence\
+→ literature_manifest.csv
+→ screening table
+→ evidence table
+→ metadata verification
+
+papers\
+→ 合法取得的原始 PDF
+
+assets\
+→ 圖表 / 圖片 / 流程圖
+
+reports\
+→ Phase 0 / Phase 0.5 / final reports / DOCX
+
+notebooklm\
+→ NotebookLM upload log / notebook source list
 ```
 
-15.2 建議的 PDF 命名
+---
 
-不要讓 Agent 儲存成 document.pdf、download(3).pdf 或 fulltext.pdf。
+## 研究時固定從這裡開 Hermes
 
-建議格式：
+```powershell
+cd "$env:USERPROFILE\Documents\DeepResearch"
+hermes
+```
+
+這樣可以避免 Hermes 在不適合的工作目錄載入不必要的 `AGENTS.md`。
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-15"></a>
+
+# 15. 設定本地文獻保存規則
+
+## 15.1 PDF 命名
+
+建議：
 
 ```text
 YEAR_FirstAuthor_ShortTitle.pdf
@@ -1908,14 +1236,22 @@ YEAR_FirstAuthor_ShortTitle.pdf
 2014_Baker_Digital_24h_Dietary_Recall_Athletes.pdf
 ```
 
-DOI 請記錄在 manifest，不要把完整 DOI 塞進 Windows 檔名，避免 / 等非法字元。
-
-15.3 建立文獻 Manifest
-
-建議至少維護：
+不要：
 
 ```text
-C:\Users\<你的帳號>\Documents\DeepResearch\evidence\literature_manifest.csv
+download.pdf
+document(2).pdf
+paper.pdf
+```
+
+---
+
+## 15.2 建立 literature manifest
+
+建議：
+
+```text
+Documents\DeepResearch\evidence\literature_manifest.csv
 ```
 
 欄位：
@@ -1939,7 +1275,13 @@ notebooklm_uploaded
 notes
 ```
 
-verification_level 建議只使用：
+其中：
+
+```text
+verification_level
+```
+
+只建議使用：
 
 ```text
 metadata
@@ -1947,81 +1289,44 @@ abstract
 full_text
 ```
 
-不要把「找到 DOI」等同於「已讀全文」。
+**找到 DOI 不代表已全文驗證。**
 
-────────
+---
 
-15.4 關於原 Repo 的 Unpaywall 範例 Script
+## 15.3 把本地保存規則加進 Skill
 
-目前 Deep-Research-Agent 公開版本中的：
-
-```text
-skills/deep-science-writer/scripts/node/fetch_unpaywall_oa.js
-```
-
-比較像作者自己的示範腳本，不建議直接當成通用下載器。
-
-目前版本內有硬編碼：
-
-```text
-DOI 清單
-作者自己的 Unpaywall email
-輸出檔名
-```
-
-因此新使用者不要直接期待它會自動下載自己搜尋到的所有論文。
-
-本 README 的做法是：
-
-```text
-Agent 搜尋與篩選
-↓
-合法 OA / institutional access
-↓
-把實際取得的 PDF 存到 papers\
-↓
-更新 literature_manifest.csv
-↓
-再選擇性送進 NotebookLM
-```
-
-如果未來要做全自動 OA downloader，建議另外寫可讀取 manifest / DOI 清單的通用腳本，不要修改或沿用硬編碼範例。
-
-────────
-
-16. 修改 Deep Science Writer：強制本地保存
-
-開啟：
+開：
 
 ```powershell
 $skill = "$env:LOCALAPPDATA\hermes\skills\Deep-Research-Agent\skills\deep-science-writer\SKILL.md"
 notepad $skill
 ```
 
-在 LOCAL RUNTIME POLICY — WINDOWS / ECONOMY MODE 區塊中追加：
+在 `LOCAL RUNTIME POLICY` 裡加入：
 
 ```markdown
 ### Local Literature Storage
 
-- The research workspace is:
-  `C:/Users/YOUR_USERNAME/Documents/DeepResearch/`
+- Resolve the current Windows user home directory from `%USERPROFILE%`.
+- Use `%USERPROFILE%/Documents/DeepResearch/` as the research workspace.
+- Never hard-code another username or require a `D:/` drive.
 
 - Store literature metadata and screening records under:
-  `C:/Users/YOUR_USERNAME/Documents/DeepResearch/evidence/`
+  `%USERPROFILE%/Documents/DeepResearch/evidence/`
 
 - Store legally obtained full-text papers under:
-  `C:/Users/YOUR_USERNAME/Documents/DeepResearch/papers/`
+  `%USERPROFILE%/Documents/DeepResearch/papers/`
 
-- Store generated research reports under:
-  `C:/Users/YOUR_USERNAME/Documents/DeepResearch/reports/`
+- Store generated reports under:
+  `%USERPROFILE%/Documents/DeepResearch/reports/`
 
-- Maintain a literature manifest whenever practical:
-  `C:/Users/YOUR_USERNAME/Documents/DeepResearch/evidence/literature_manifest.csv`
+- Maintain:
+  `%USERPROFILE%/Documents/DeepResearch/evidence/literature_manifest.csv`
 
 - For every screened or retained paper, record at minimum:
   title, authors, year, journal, DOI, source database,
   screening decision, verification level, OA URL,
-  local PDF path, and NotebookLM upload status.
+  local PDF path, NotebookLM notebook, and NotebookLM upload status.
 
 - Verification levels MUST be explicitly distinguished:
   metadata / abstract / full_text.
@@ -2029,104 +1334,127 @@ notepad $skill
 - Never mark a paper as full-text verified unless the actual full text
   was successfully obtained and read.
 
-- Save each legally obtained paper as an individual PDF.
-  Do not merge multiple papers into one PDF.
-
-- Recommended filename format:
+- Save each legally obtained paper as an individual file.
+- Recommended PDF filename:
   `YEAR_FirstAuthor_ShortTitle.pdf`
 
-- Deduplicate papers by DOI first, then by normalized title.
+- Deduplicate papers by DOI first, then normalized title.
 
-- If a full text cannot legally be obtained, keep the metadata and DOI/URL
-  in the manifest and mark the PDF as unavailable.
+- If full text cannot legally be obtained, keep metadata and DOI/URL
+  in the manifest and mark local_pdf as unavailable.
   Do not fabricate a local file.
 ```
 
-把 YOUR_USERNAME 換成自己的 Windows 使用者名稱。
+---
 
-查詢：
+## 15.4 原 repo 的 Unpaywall script 注意
 
-```powershell
-$env:USERNAME
-$env:USERPROFILE
-```
-
-────────
-
-17. NotebookLM MCP：讓 Hermes 操作 NotebookLM
-
-Deep-Research-Agent 原始設計的 Phase 7 會把研究文獻放進 NotebookLM。
-
-這裡使用的是第三方 MCP：
+目前 repo 內的：
 
 ```text
-notebooklm-mcp-server
+skills/deep-science-writer/scripts/node/fetch_unpaywall_oa.js
 ```
 
-專案：
+比較像作者自己的示範腳本。
+
+不要直接假設它會自動處理你的所有文獻。
+
+公開版本曾包含：
+
+```text
+硬編碼 DOI 清單
+硬編碼 email
+固定輸出檔
+```
+
+比較安全的做法：
+
+```text
+搜尋 / 篩選
+↓
+確認 OA 或合法 institutional access
+↓
+下載真正取得的 PDF
+↓
+存進 papers\
+↓
+更新 literature_manifest.csv
+```
+
+如果未來要全自動 OA downloader，建議另外寫一個從 manifest / DOI list 讀取的通用 script。
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-16"></a>
+
+# 16. 設定 NotebookLM MCP
+
+NotebookLM：
+
+https://notebooklm.google.com/
+
+這裡使用第三方 MCP：
 
 https://github.com/moodRobotics/notebooklm-mcp-server
 
-Deep-Research-Agent：
+注意：
 
-https://github.com/CYC2002tommy/Deep-Research-Agent
+```text
+這不是 Google 官方 NotebookLM API
+```
 
-17.1 確認 Node.js / npx
+它是第三方工具透過持久化 browser session 來操作 NotebookLM。
+
+---
+
+## 16.1 確認 Node / npx
 
 ```powershell
 node -v
 npx -v
 ```
 
-如果沒有版本號：
+都有版本號再繼續。
 
-```powershell
-hermes doctor
-```
+---
 
-先確認 Node.js。
-
-17.2 第一次登入 NotebookLM
+## 16.2 第一次登入
 
 ```powershell
 npx -y notebooklm-mcp-server auth
 ```
 
-第一次可能需要下載套件。接著瀏覽器會開啟：
+瀏覽器會開啟：
 
 ```text
-登入 Google 帳號
+登入 Google
 ↓
-進入 NotebookLM
+進 NotebookLM
 ↓
-確認看得到 notebooks
+確認看得到自己的 notebooks
 ↓
 完成後關閉瀏覽器
 ```
 
-若之後登入失效：
+如果之後 session 過期：
 
 ```powershell
 npx -y notebooklm-mcp-server refresh_auth
 ```
 
-17.3 加入 Hermes MCP
+---
 
-開：
+## 16.3 加入 Hermes MCP
+
+打開：
 
 ```powershell
 notepad "$env:LOCALAPPDATA\hermes\config.yaml"
 ```
 
-如果前面已經有：
-
-```yaml
-mcp_servers:
-```
-
-不要再建立第二個 mcp_servers:。
-
-把 notebooklm: 加在 Exa / Scopus 同一層：
+完整例子：
 
 ```yaml
 mcp_servers:
@@ -2159,35 +1487,39 @@ mcp_servers:
     supports_parallel_tool_calls: false
 ```
 
-NotebookLM 可能會建立 notebook、加入來源，因此不建議 parallel write。
+不要建立兩個：
 
-17.4 測試 NotebookLM MCP
+```yaml
+mcp_servers:
+```
+
+NotebookLM 有建立 notebook / 上傳來源等寫入操作，因此建議：
+
+```yaml
+supports_parallel_tool_calls: false
+```
+
+---
+
+## 16.4 測試 MCP
 
 ```powershell
 hermes mcp test notebooklm
 ```
 
-正常應該看到：
+只要：
 
 ```text
 Connected
-Tools discovered: ...
 ```
 
-工具數量可能隨版本變動，不要用固定數字判定。
+並能 discover tools 即可。
 
-常見功能包括：
+工具名稱 / 數量可能因版本更新而變。
 
-```text
-notebook_list
-notebook_create
-notebook_add_local_file
-notebook_add_url
-notebook_add_text
-notebook_query
-```
+---
 
-17.5 第一次安全測試
+## 16.5 第一次只讀測試
 
 ```powershell
 cd "$env:USERPROFILE\Documents\DeepResearch"
@@ -2203,19 +1535,69 @@ Do not create, rename, upload, modify, or delete anything.
 Return notebook titles only.
 ```
 
-能列出 notebook，代表：
+如果能列出 notebook：
 
 ```text
-Hermes → NotebookLM MCP → Google Account
+Hermes → NotebookLM MCP → Google account
 ```
 
-整條鏈成功。
+成功。
 
-────────
+[⬆ 回到目錄](#toc)
 
-18. 測試「本地檔案 → NotebookLM」
+---
 
-先建立測試檔：
+<a id="sec-17"></a>
+
+# 17. 已經裝好 NotebookLM 桌面版 / PWA 怎麼辦
+
+不用移除，也不用重裝。
+
+如果你電腦上已經有：
+
+```text
+NotebookLM 的桌面捷徑
+Chrome / Edge 安裝的 PWA
+獨立視窗版
+```
+
+照樣可以使用。
+
+Hermes 並不是去操作你目前看到的那個 NotebookLM 視窗。
+
+架構是：
+
+```text
+你平常人工使用
+NotebookLM 桌面捷徑 / PWA / Browser
+            │
+            └──── 同一 Google 帳號
+
+Hermes 自動化
+Hermes → notebooklm-mcp-server → 獨立 browser session
+            │
+            └──── 同一 Google 帳號
+```
+
+也就是：
+
+```text
+有沒有裝桌面版都可以
+```
+
+MCP 登入時仍然會自己建立 / 保存 browser session。
+
+平常要看內容時可以繼續用原本熟悉的 NotebookLM 介面。
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-18"></a>
+
+# 18. 測試本地檔案 → NotebookLM
+
+先建立一個無關緊要的測試檔：
 
 ```powershell
 Set-Content `
@@ -2223,7 +1605,14 @@ Set-Content `
 "# NotebookLM Test`nThis file was uploaded by Hermes for testing."
 ```
 
-進 Hermes 後輸入：
+進 Hermes：
+
+```powershell
+cd "$env:USERPROFILE\Documents\DeepResearch"
+hermes
+```
+
+輸入：
 
 ```text
 Use the NotebookLM MCP.
@@ -2233,67 +1622,93 @@ Hermes NotebookLM Test
 
 Then upload this local file as one individual source:
 
-C:/Users/YOUR_USERNAME/Documents/DeepResearch/papers/notebooklm_test.md
+%USERPROFILE%/Documents/DeepResearch/papers/notebooklm_test.md
 
 After upload, verify that the notebook and source exist.
 
 Do not delete or modify any other notebook.
 ```
 
-NotebookLM：
+如果 MCP 不會解析 `%USERPROFILE%`，先在 PowerShell：
+
+```powershell
+$env:USERPROFILE
+```
+
+例如得到：
+
+```text
+C:\Users\student
+```
+
+再把 prompt 改成：
+
+```text
+C:/Users/student/Documents/DeepResearch/papers/notebooklm_test.md
+```
+
+最後到：
 
 https://notebooklm.google.com/
 
-────────
+人工確認一次。
 
-19. 搜尋到的文獻怎麼導入 NotebookLM？
+[⬆ 回到目錄](#toc)
 
-不建議把 OpenAlex 找到的 40～60 篇候選全部塞進 NotebookLM。
+---
 
-建議流程：
+<a id="sec-19"></a>
+
+# 19. 設定「核心文獻自動導入 NotebookLM」
+
+**不要把 broad search 找到的所有候選文獻全部丟 NotebookLM。**
+
+建議：
 
 ```text
-OpenAlex
-↓
-40～60 candidate papers
-↓
-去重 + abstract screening
-↓
-Scopus / Semantic Scholar cross-check
-↓
-8～12 篇核心全文
-↓
+OpenAlex 40～60 candidates
+        ↓
+去重
+        ↓
+abstract screening
+        ↓
+Scopus / S2 / Exa cross-check
+        ↓
+8～12 篇核心 deep-read 文獻
+        ↓
 本地 papers\
-↓
+        ↓
 NotebookLM
 ```
 
 NotebookLM 建議放：
 
-• 已進入 deep reading 的文獻
-• 最終 evidence base
-• 最終有引用的文獻
-• 使用者特別指定的重要文獻
+```text
+✓ deep-read papers
+✓ final evidence base
+✓ 最終實際引用文獻
+✓ 使用者指定的重要文獻
+```
 
 不要放：
 
-• 已排除候選文獻
-• 搜尋結果頁
-• 只有 title 沒內容的 metadata
-• 重複 DOI
-• 無法合法取得的假 PDF
+```text
+✗ 被排除候選
+✗ 重複 DOI
+✗ 只有 title 的 metadata
+✗ 搜尋結果頁
+✗ 無法取得卻假裝存在的 PDF
+```
 
-────────
+---
 
-20. 在 SKILL.md 加入 NotebookLM 自動匯入規則
-
-在 LOCAL RUNTIME POLICY 追加：
+## 19.1 在 SKILL.md 加入規則
 
 ```markdown
 ### NotebookLM Literature Archiving
 
-NotebookLM integration is enabled only when the `notebooklm` MCP server
-is connected and authenticated.
+NotebookLM integration is enabled only when the `notebooklm`
+MCP server is connected and authenticated.
 
 Do NOT upload the entire broad-discovery candidate pool to NotebookLM.
 
@@ -2305,81 +1720,44 @@ Upload only:
 
 Before uploading:
 1. Deduplicate by DOI, then normalized title.
-2. Verify the paper metadata.
+2. Verify paper metadata.
 3. Prefer an actual legally obtained local full-text PDF.
 4. Confirm the local file exists.
 5. Record the local path in `evidence/literature_manifest.csv`.
 
 For each research project:
 - Create or reuse ONE NotebookLM notebook dedicated to that project.
-- Use a descriptive notebook name such as:
+- Use a descriptive notebook name:
   `DeepResearch - <Research Topic>`
 - Add each paper as an INDIVIDUAL source.
 - Never combine multiple papers into one source solely to save source slots.
 
 Preferred upload order:
-1. Local full-text PDF → `notebook_add_local_file`
-2. Legitimate open-access PDF/web URL → `notebook_add_url`
-3. Verified text/abstract only when full text is genuinely unavailable
-   and the source is clearly labeled as abstract-only.
+1. Local legally obtained full-text PDF
+2. Legitimate open-access PDF/web URL
+3. Verified abstract/text only when full text is genuinely unavailable,
+   and clearly label it as abstract-only.
 
 After successful upload:
 - update `notebooklm_uploaded = yes`
   in `evidence/literature_manifest.csv`;
 - record the NotebookLM notebook name;
-- never claim upload success without verifying that the source exists.
+- verify that the source actually exists.
 
-If NotebookLM authentication fails:
-- stop NotebookLM ingestion;
-- preserve all local files and evidence records;
-- continue the research workflow normally;
-- do not block the literature review.
+If NotebookLM authentication or ingestion fails:
+- preserve local files and evidence records;
+- continue the research workflow;
+- do not allow NotebookLM failure to block the literature review.
 
-NotebookLM is a knowledge-management destination, not a substitute
-for DOI verification or full-text evidence verification.
+NotebookLM is a knowledge-management destination,
+not a substitute for DOI verification or full-text evidence verification.
 ```
 
-────────
+---
 
-21. 完整保存流程
+## 19.2 NotebookLM 免費方案限制
 
-```text
-OpenAlex
-   ↓
-Broad discovery
-   ↓
-Dedup + screening
-   ↓
-Scopus / Semantic Scholar / Exa
-   ↓
-evidence/literature_manifest.csv
-   ↓
-Selected deep reads
-   ├──────────────→ papers/*.pdf
-   ├──────────────→ reports/*.md
-   └──────────────→ NotebookLM MCP
-                         ↓
-               DeepResearch - <Topic>
-                         ├─ Paper 1
-                         ├─ Paper 2
-                         └─ ...
-```
-
-本地資料夾才是主要 archive。
-
-NotebookLM 用於：
-
-```text
-分析 / 問答 / 摘要 / Audio Overview / 跨文獻查詢
-```
-
-不要把 NotebookLM 當成唯一的備份位置。
-
-────────
-
-22. NotebookLM 免費版限制
-
-限制可能隨 Google 政策更新。目前免費版常見限制：
+目前 Google 官方列出的 Free plan 常見限制：
 
 ```text
 100 notebooks
@@ -2392,22 +1770,18 @@ NotebookLM 用於：
 
 ```text
 最多 500,000 words
-本地檔案最多 200 MB
+本地 upload 最多 200 MB
 ```
 
-因此 Economy Mode 的 8～12 deep-read papers 很適合放進單一 notebook。
-
-官方說明：
-
-https://support.google.com/notebooklm/answer/16215270?hl=zh-Hant
+Google 官方說明：
 
 https://support.google.com/notebooklm/answer/16269187
 
-────────
+來源格式：
 
-23. NotebookLM 支援來源
+https://support.google.com/notebooklm/answer/16215270
 
-目前支援包含：
+Deep Research 最常用：
 
 ```text
 PDF
@@ -2415,33 +1789,730 @@ DOCX
 TXT
 Markdown
 CSV
-PowerPoint
-Google Docs
-Google Slides
-Google Sheets
-Web URLs
+PPTX
+Web URL
 ePub
-YouTube URLs
-部分音訊與圖片
+YouTube URL
 ```
 
-Deep Research 最常用：
+若有完整 PDF：
 
 ```text
-PDF
-Markdown
-Web URL
+優先上傳 PDF
 ```
 
-若有完整 PDF，優先 PDF。
+不要把付費牆 landing page 當成已匯入全文。
 
-Google 官方說明指出，paywalled webpages 不支援直接作為網頁來源，因此不要把出版社付費牆頁面當成「已匯入全文」。
+[⬆ 回到目錄](#toc)
 
-────────
+---
 
-24. NotebookLM MCP 常見錯誤
+<a id="sec-20"></a>
 
-npx 找不到
+# 20. 加入 Economy Mode
+
+原始 Deep-Research-Agent 比較偏重：
+
+```text
+100+ candidates
+20～30+ full texts
+多 Agent
+多 API
+```
+
+完全免費模型很容易撞：
+
+```text
+OpenRouter daily cap
+Semantic Scholar 1 RPS
+長 context
+```
+
+所以建議加 Economy Mode。
+
+---
+
+## 20.1 先備份 SKILL
+
+```powershell
+$skill = "$env:LOCALAPPDATA\hermes\skills\Deep-Research-Agent\skills\deep-science-writer\SKILL.md"
+
+Copy-Item $skill "$skill.original.bak"
+
+notepad $skill
+```
+
+找到：
+
+```markdown
+# Deep Science Writer (End-to-End Pipeline)
+```
+
+在它後面加入下一節完整規則。
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-21"></a>
+
+# 21. 完整 Economy Mode 規則
+
+把以下內容貼進 `SKILL.md`：
+
+```markdown
+## LOCAL RUNTIME POLICY — WINDOWS / ECONOMY MODE
+
+This local policy overrides conflicting rules later in this skill.
+
+### Environment
+- Platform: Windows.
+- Resolve the current user home directory from `%USERPROFILE%`.
+- Research workspace:
+  `%USERPROFILE%/Documents/DeepResearch/`
+- Never hard-code another username.
+- Never require a `D:/` drive.
+- Store outputs, caches, evidence records and downloaded papers under
+  the DeepResearch workspace.
+
+### Economy Mode
+Economy Mode is enabled by default.
+
+For normal exploratory research:
+- Initial candidate pool: approximately 40–60 papers.
+- Targeted full-text set: approximately 8–12 high-relevance papers.
+- Expand further only after explicit user approval.
+- Reuse previously retrieved data before issuing new API requests.
+- Cache API responses whenever practical.
+- Avoid repeated searches that answer the same question.
+
+### OpenAlex
+- Use OpenAlex as the primary broad-discovery source.
+- Perform high-volume first-pass searching here.
+- Deduplicate using DOI, PMID, OpenAlex ID, or normalized title.
+- Cache results locally.
+
+### Semantic Scholar
+- Semantic Scholar is supplemental, not the primary high-volume discovery source.
+- Prefer batch/bulk endpoints.
+- Never issue concurrent Semantic Scholar API requests.
+- Maintain at least 1.25 seconds between requests.
+- Query only papers remaining after OpenAlex deduplication when possible.
+- Cache responses by DOI or Semantic Scholar Paper ID.
+- Request only required fields.
+
+On HTTP 429:
+1. Stop sending Semantic Scholar requests.
+2. Wait 5 seconds.
+3. Retry.
+4. If another 429 occurs, wait 10, 20, 40, then 80 seconds.
+5. Never attempt to bypass rate limits using multiple accounts,
+   API keys, or IP addresses.
+
+### Scopus
+- Use Scopus primarily for detailed metadata, indexing verification,
+  citation information, and cross-checking.
+- Avoid repeating broad searches already adequately covered by OpenAlex.
+- Reuse cached MCP responses.
+- Check API quota during large jobs.
+
+### Exa
+- Use Exa for supplementary scholarly web discovery,
+  open-access discovery, institutional repositories, and missing URLs.
+- Do not repeatedly search information already available from
+  OpenAlex, Scopus, or Semantic Scholar.
+
+### Parallelism
+- Maximum default LLM subagent concurrency in Economy Mode: 2.
+- Do not allow parallel Semantic Scholar requests.
+- Prefer scripts and batch API calls over spawning many LLM workers.
+- Full multi-agent research requires explicit user approval.
+
+### Full Text
+Use this order:
+1. Legitimate open-access publisher copy.
+2. Institutional repository.
+3. OpenAlex / Unpaywall open-access location.
+4. Legitimate institutional access.
+5. Ask the user to obtain or provide the paper.
+
+Do not bypass paywalls, authentication controls,
+robots restrictions, or other access controls.
+
+If full text is unavailable, record it as unavailable.
+
+Never claim full-text verification when only metadata or abstract was available.
+
+### Evidence Integrity
+- A valid DOI proves a publication exists;
+  it does not prove that a claim is supported.
+- Distinguish metadata verification, abstract verification,
+  and full-text verification.
+- Never fabricate methods, results, sample sizes,
+  effect sizes, authors, years, or conclusions.
+
+### Local Literature Storage
+- Store metadata and screening records under:
+  `%USERPROFILE%/Documents/DeepResearch/evidence/`
+- Store legally obtained full-text papers under:
+  `%USERPROFILE%/Documents/DeepResearch/papers/`
+- Store generated reports under:
+  `%USERPROFILE%/Documents/DeepResearch/reports/`
+- Maintain:
+  `%USERPROFILE%/Documents/DeepResearch/evidence/literature_manifest.csv`
+- Use verification levels:
+  metadata / abstract / full_text.
+- Save retained papers individually.
+- Recommended filename:
+  `YEAR_FirstAuthor_ShortTitle.pdf`
+- Deduplicate by DOI first, then normalized title.
+
+### NotebookLM Literature Archiving
+NotebookLM integration is active only when the `notebooklm`
+MCP server is connected and authenticated.
+
+Do NOT upload the broad-discovery candidate pool.
+
+Upload only:
+- deep-read papers;
+- final evidence-base papers;
+- final cited papers;
+- papers explicitly requested by the user.
+
+Before upload:
+1. Deduplicate by DOI/title.
+2. Verify metadata.
+3. Prefer legally obtained local full-text PDF.
+4. Confirm local file exists.
+5. Record the local path in `literature_manifest.csv`.
+
+For each research project:
+- Create or reuse one dedicated NotebookLM notebook.
+- Suggested name:
+  `DeepResearch - <Research Topic>`
+- Keep each paper as an individual source.
+
+After successful upload:
+- record notebook name;
+- set `notebooklm_uploaded = yes`;
+- verify the source exists.
+
+NotebookLM failure must NOT block the research workflow.
+
+### Optional Integrations
+The following must not block basic research:
+- Zotero
+- NotebookLM
+- Obsidian
+- visualization tools
+
+Skip optional integrations when not configured.
+```
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-22"></a>
+
+# 22. 確認 Skill 還正常
+
+```powershell
+hermes skills list
+```
+
+確認：
+
+```text
+deep-science-writer
+remi
+```
+
+仍為：
+
+```text
+enabled
+```
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-23"></a>
+
+# 23. 第一次測試：只跑 Phase 0
+
+先：
+
+```powershell
+cd "$env:USERPROFILE\Documents\DeepResearch"
+hermes
+```
+
+貼：
+
+```text
+Please use the deep-science-writer skill in ECONOMY MODE to research
+the effects of stroboscopic visual training on sports performance.
+
+Focus on:
+- trained or competitive athletes
+- perceptual and cognitive outcomes
+- reaction and visual-attention outcomes
+- motor or sport-specific performance
+- evidence of transfer to actual sport performance
+- methodological limitations and research gaps
+
+Use OpenAlex as the primary broad-discovery database,
+with Scopus, Exa, and Semantic Scholar as complementary sources.
+
+For this turn, execute Phase 0 ONLY.
+
+1. Clarify the research scope if necessary.
+2. Propose search concepts and keyword combinations.
+3. Define inclusion and exclusion criteria.
+4. Explain how each database will be used.
+5. Propose the structure of the review.
+6. Estimate candidate and full-text paper counts.
+
+STOP after presenting the blueprint.
+
+Do NOT begin Phase 0.5.
+Do NOT launch large-scale retrieval.
+Do NOT launch multiple research subagents.
+Wait for explicit approval.
+```
+
+正常應該規劃：
+
+```text
+40～60 candidates
+8～12 deep-read papers
+```
+
+然後停下來問你是否批准。
+
+如果它直接開始大量 call API：
+
+```text
+Ctrl+C
+```
+
+先修 Skill。
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-24"></a>
+
+# 24. 正式放行 Phase 0.5
+
+如果 Blueprint 沒問題：
+
+```text
+I approve this research blueprint.
+
+Proceed to Phase 0.5 in ECONOMY MODE.
+
+Follow the local runtime policy strictly:
+- use OpenAlex as the primary broad-discovery source;
+- respect Semantic Scholar rate limits and caching rules;
+- avoid duplicate API requests;
+- do not bypass paywalls or access controls;
+- store all outputs under my Documents/DeepResearch workspace;
+- save legally obtained deep-read papers locally;
+- update the literature manifest;
+- upload retained deep-read/full-text papers to the project NotebookLM
+  only if NotebookLM MCP is connected;
+- stop after Phase 0.5 and wait for my approval.
+```
+
+第一次正式使用建議：
+
+```text
+一個 Phase 一個 Phase 放行
+```
+
+不要一按就讓它跑到 DOCX。
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-25"></a>
+
+# 25. 完整文獻保存與 NotebookLM 流程
+
+推薦架構：
+
+```text
+                 OpenAlex
+                    │
+             broad discovery
+                    │
+                    ▼
+          dedup + abstract screening
+                    │
+        ┌───────────┼────────────┐
+        ▼           ▼            ▼
+     Scopus   Semantic Scholar   Exa
+        │           │            │
+        └───────────┼────────────┘
+                    │
+                    ▼
+ evidence/literature_manifest.csv
+                    │
+                    ▼
+            selected deep reads
+                    │
+        ┌───────────┴───────────┐
+        ▼                       ▼
+  papers/*.pdf              reports/*.md
+        │
+        ▼
+ NotebookLM MCP
+        │
+        ▼
+ DeepResearch - <Topic>
+        │
+        ├─ Paper 1
+        ├─ Paper 2
+        ├─ Paper 3
+        └─ ...
+```
+
+其中：
+
+```text
+本地 papers\
+```
+
+才是主要 archive。
+
+NotebookLM 是：
+
+```text
+跨文獻問答
+摘要
+Audio Overview
+研究整理
+```
+
+不要把 NotebookLM 當唯一備份。
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-26"></a>
+
+# 26. OpenRouter 50 次/日怎麼省
+
+OpenRouter 免費模型的限制跟 Semantic Scholar 不一樣。
+
+這是：
+
+```text
+LLM inference request 限制
+```
+
+不是文獻 API。
+
+未購買 credits 的 Free model account 通常：
+
+```text
+50 requests/day
+```
+
+所以：
+
+```text
+1 個 Deep Research 任務
+≠
+1 次 request
+```
+
+Agent 可能：
+
+```text
+看 prompt          1 次
+看 tool output     1 次
+決定下一步         1 次
+再 call tool       1 次
+再 reasoning       1 次
+subagent            多次
+```
+
+一天很容易用完。
+
+---
+
+## 正確省法
+
+### 1. 不要每天一直重裝 / 重測
+
+安裝完成後，不需要一直：
+
+```text
+測 OpenAlex
+測 Scopus
+測 Exa
+測 S2
+```
+
+### 2. Phase 結束就存檔
+
+例如：
+
+```text
+phase0.md
+phase0.5.md
+literature_manifest.csv
+```
+
+### 3. context 太長就開新 session
+
+不要永遠在：
+
+```text
+100k+ tokens
+```
+
+的同一個聊天跑。
+
+### 4. 不要為小修正整輪重跑
+
+應該：
+
+```text
+保留已驗證結果
+只補錯誤 / 不足
+```
+
+### 5. API retrieval 能用 script 就不要讓 LLM 一篇一篇操作
+
+理想：
+
+```text
+Python / Node script
+↓
+抓 metadata
+↓
+去重
+↓
+產生 CSV/JSON
+↓
+一次交給 LLM 分析
+```
+
+而不是：
+
+```text
+每抓一篇
+→ LLM reasoning
+→ 再抓一篇
+→ LLM reasoning
+```
+
+### 6. 不要以為換另一個 `:free` 模型就會重置 50/day
+
+這個 cap 是：
+
+```text
+OpenRouter account free-model quota
+```
+
+不是單一模型 quota。
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-27"></a>
+
+# 27. 建立 Hermes Desktop 一鍵啟動 BAT
+
+桌面建立：
+
+```text
+Start_Hermes_Desktop.bat
+```
+
+內容：
+
+```bat
+@echo off
+setlocal
+
+set "WORKDIR=%USERPROFILE%\Documents\DeepResearch"
+
+if not exist "%WORKDIR%" (
+    mkdir "%WORKDIR%"
+)
+
+where hermes >nul 2>&1
+if errorlevel 1 (
+    echo Hermes was not found in PATH.
+    echo Please confirm that Hermes is installed.
+    pause
+    exit /b 1
+)
+
+cd /d "%WORKDIR%"
+hermes desktop
+
+endlocal
+exit /b
+```
+
+以後直接：
+
+```text
+雙擊 BAT
+↓
+切到 DeepResearch 工作區
+↓
+開 Hermes Desktop
+```
+
+這樣不需要每天手動進 PowerShell。
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-28"></a>
+
+# 28. 常見錯誤與排除
+
+## 28.1 `No module named pip`
+
+不要補 pip。
+
+用：
+
+```powershell
+uv pip install ...
+```
+
+---
+
+## 28.2 `hermes skills install` 抓不到 repo
+
+改：
+
+```powershell
+cd "$env:LOCALAPPDATA\hermes\skills"
+git clone https://github.com/CYC2002tommy/Deep-Research-Agent.git
+```
+
+---
+
+## 28.3 Semantic Scholar 429
+
+停下。
+
+不要狂 retry。
+
+依：
+
+```text
+5 → 10 → 20 → 40 → 80 秒
+```
+
+並確認：
+
+```text
+OpenAlex 主搜
+S2 補資料
+```
+
+---
+
+## 28.4 OpenRouter 429：`free-models-per-day`
+
+如果 log 有：
+
+```text
+X-RateLimit-Limit: 50
+X-RateLimit-Remaining: 0
+```
+
+代表：
+
+```text
+今天 Free-model quota 用完
+```
+
+不是 Semantic Scholar 問題。
+
+不要用 2 秒、5 秒 backoff 硬 retry。
+
+等 daily reset。
+
+---
+
+## 28.5 Scopus `Connection closed`
+
+確認 config：
+
+```yaml
+args:
+  - "--with"
+  - "mcp>=1.0,<2"
+  - "scopus-mcp"
+```
+
+仍然不行：
+
+```powershell
+uvx --with "mcp>=1.0,<2" scopus-mcp
+```
+
+直接看真正 traceback。
+
+---
+
+## 28.6 Scopus key 有效但功能被拒
+
+可能是：
+
+```text
+institutional entitlement
+```
+
+校內網路與家中網路可能不同。
+
+---
+
+## 28.7 Exa MCP 429
+
+代表免費 remote MCP 暫時撞 limit。
+
+先等，不要 loop 狂打。
+
+---
+
+## 28.8 `AGENTS.md TRUNCATED`
+
+先：
+
+```powershell
+cd "$env:USERPROFILE\Documents\DeepResearch"
+```
+
+再：
+
+```powershell
+hermes
+```
+
+不要從 Hermes venv / source directory 開研究 session。
+
+---
+
+## 28.9 NotebookLM `npx` 找不到
 
 ```powershell
 node -v
@@ -2449,116 +2520,171 @@ npx -v
 hermes doctor
 ```
 
-MCP Connection closed
+---
+
+## 28.10 NotebookLM MCP `Connection closed`
+
+手動：
 
 ```powershell
 npx -y notebooklm-mcp-server start
 ```
 
-直接看真正錯誤。
+看真正錯誤。
 
-登入失效
+---
+
+## 28.11 NotebookLM 登入失效
 
 ```powershell
 npx -y notebooklm-mcp-server refresh_auth
 ```
 
-本地 PDF 路徑錯誤
+---
+
+## 28.12 NotebookLM 本地 PDF 找不到
 
 ```powershell
-Test-Path "C:\Users\YOUR_USERNAME\Documents\DeepResearch\papers\paper.pdf"
+Test-Path "$env:USERPROFILE\Documents\DeepResearch\papers\paper.pdf"
 ```
 
-False 代表路徑錯。
-
-Source 無法匯入
-
-常見原因：
+如果：
 
 ```text
-檔案 > 200MB
-內容 > 500,000 words
-PDF 有 copy protection
-來源數量達上限
+False
 ```
 
-有 DOI，但沒有 PDF
+代表路徑錯。
 
-在 manifest 記：
+---
+
+## 28.13 NotebookLM source 匯入失敗
+
+常見：
+
+```text
+檔案超過 200 MB
+內容超過 500,000 words
+PDF copy-protected
+notebook source 數量已滿
+```
+
+---
+
+## 28.14 有 DOI，但沒有 PDF
+
+正常。
+
+manifest：
 
 ```text
 local_pdf = unavailable
-verification_level = metadata / abstract
+verification_level = metadata 或 abstract
 notebooklm_uploaded = no
 ```
 
-不要產生假 PDF。
+不要製造假 PDF。
 
-────────
+---
 
-25. 正式研究 Prompt 範例
+## 28.15 Agent 找到正確論文卻寫錯作者 / 樣本數
 
-```text
-For all literature retrieved during this research:
+不要只驗 DOI 是否活著。
 
-- Keep the broad candidate pool in the evidence manifest only.
-
-- Save legally available full-text PDFs selected for deep reading under:
-  C:/Users/YOUR_USERNAME/Documents/DeepResearch/papers/
-
-- Deduplicate by DOI before downloading or uploading.
-
-- After full-text verification, create or reuse one NotebookLM notebook
-  for this research project.
-
-- Upload each retained deep-read/full-text paper as an individual
-  NotebookLM source.
-
-- Do not upload excluded candidates.
-
-- Do not upload a paywalled landing page and label it as full text.
-
-- Record all local paths and NotebookLM upload status in:
-  C:/Users/YOUR_USERNAME/Documents/DeepResearch/evidence/literature_manifest.csv
-
-- NotebookLM ingestion must never block the research pipeline.
-  If NotebookLM fails, keep the local archive and continue.
-```
-
-────────
-
-26. 安全與學術注意事項
-
-notebooklm-mcp-server 是第三方 MCP，不是 Google 官方 NotebookLM API。
-
-它會透過 browser session 存取登入的 Google / NotebookLM 帳號。
-
-測試階段建議不要使用高權限的主要 Google Workspace 管理員帳號；個人研究可考慮獨立研究用 Google 帳號。
-
-另外：
+核心文獻應建立 verification table：
 
 ```text
-能下載 ≠ 有權重新散布
+Exact title
+Authors
+Year
+Journal
+DOI
+Study type
+Sample size
+Population
+Comparator
+Outcomes
+Statistics
+Main findings
+Limitations
+Verification level
+Verification source
 ```
 
-本地保存與 NotebookLM 上傳都應遵守學校授權、出版社條款、著作權與 NotebookLM 使用規範。
+並清楚區分：
 
-不要使用本流程繞過付費牆或存取控制。
+```text
+VERIFIED METADATA
+VERIFIED ABSTRACT
+VERIFIED FULL TEXT
+INFERENCE
+```
 
-────────
+[⬆ 回到目錄](#toc)
 
-27. 更新後健康檢查
+---
+
+<a id="sec-29"></a>
+
+# 29. 完整健康檢查
+
+## Hermes
 
 ```powershell
-Get-ChildItem "$env:USERPROFILE\Documents\DeepResearch"
+hermes doctor
+```
 
-hermes mcp test notebooklm
-hermes mcp test exa
-hermes mcp test scopus
+## Skills
+
+```powershell
 hermes skills list
 ```
 
-工作區應該有：
+## Exa
+
+```powershell
+hermes mcp test exa
+```
+
+## Scopus
+
+```powershell
+hermes mcp test scopus
+```
+
+## NotebookLM
+
+```powershell
+hermes mcp test notebooklm
+```
+
+## OpenAlex
+
+```powershell
+$key = (Get-Content "$env:LOCALAPPDATA\hermes\.env" | Where-Object { $_ -like 'OPENALEX_API_KEY=*' }) -replace '^OPENALEX_API_KEY=',''
+
+Invoke-RestMethod "https://api.openalex.org/rate-limit?api_key=$key"
+```
+
+## Semantic Scholar
+
+```powershell
+$s2key = (Get-Content "$env:LOCALAPPDATA\hermes\.env" | Where-Object { $_ -like 'SEMANTIC_SCHOLAR_API_KEY=*' }) -replace '^SEMANTIC_SCHOLAR_API_KEY=',''
+
+$headers = @{ "x-api-key" = $s2key }
+
+Invoke-RestMethod `
+  -Uri "https://api.semanticscholar.org/graph/v1/paper/DOI:10.3758/s13414-012-0344-6?fields=title,year,citationCount" `
+  -Headers $headers
+```
+
+## 工作區
+
+```powershell
+Get-ChildItem "$env:USERPROFILE\Documents\DeepResearch"
+```
+
+應有：
 
 ```text
 cache
@@ -2569,28 +2695,267 @@ reports
 notebooklm
 ```
 
-────────
+[⬆ 回到目錄](#toc)
 
-28. 更新後完成檢查表
+---
 
-☐ DeepResearch 本地工作區存在
-☐ evidence 資料夾存在
-☐ papers 資料夾存在
-☐ notebooklm 資料夾存在
-☐ SKILL.md 已加入 Local Literature Storage
-☐ Node.js / npx 正常
-☐ NotebookLM MCP 已登入
-☐ hermes mcp test notebooklm Connected
-☐ Hermes 可以列出 NotebookLM notebooks
-☐ 測試本地檔案可以上傳
-☐ SKILL.md 已加入 NotebookLM Literature Archiving
-☐ broad candidate 不會全部上傳 NotebookLM
-☐ deep-read paper 會個別保留 PDF
-☐ NotebookLM 每篇文獻維持 individual source
-☐ literature manifest 會記錄本地路徑與 NotebookLM 狀態
+<a id="sec-30"></a>
 
-全部完成後：
+# 30. 最終完成檢查表
+
+## Hermes / LLM
+
+- [ ] Hermes 已安裝
+- [ ] `hermes doctor` 正常
+- [ ] Hermes Desktop 可開
+- [ ] OpenRouter API key 已設定
+- [ ] 免費模型可回答
+
+## Deep Research Agent
+
+- [ ] Deep-Research-Agent 已 clone
+- [ ] `deep-science-writer` enabled
+- [ ] `remi` enabled
+- [ ] Python dependencies OK
+- [ ] Economy Mode 已加入
+
+## 文獻 API
+
+- [ ] OpenAlex API 成功
+- [ ] Semantic Scholar API 成功
+- [ ] Semantic Scholar 1.25 秒 / backoff 規則已加入
+- [ ] Exa MCP Connected
+- [ ] Scopus MCP Connected
+- [ ] Scopus 真實搜尋成功
+- [ ] Scopus quota 可讀
+
+## 本地保存
+
+- [ ] `Documents\DeepResearch` 存在
+- [ ] `cache` 存在
+- [ ] `evidence` 存在
+- [ ] `papers` 存在
+- [ ] `assets` 存在
+- [ ] `reports` 存在
+- [ ] `notebooklm` 存在
+- [ ] `literature_manifest.csv` 規則已加入
+- [ ] verification level 規則已加入
+
+## NotebookLM
+
+- [ ] Node / npx 正常
+- [ ] NotebookLM MCP 已 auth
+- [ ] `hermes mcp test notebooklm` Connected
+- [ ] Hermes 可以 list notebooks
+- [ ] 測試本地檔案可上傳
+- [ ] broad candidates 不會全部上傳
+- [ ] deep-read paper 每篇 individual source
+- [ ] manifest 會記錄 notebook / upload status
+
+## 研究工作流
+
+- [ ] Phase 0 可以正常停下等批准
+- [ ] Economy Mode 約 40–60 candidates
+- [ ] 約 8–12 deep reads
+- [ ] 不會把 DOI existence 當 claim verification
+- [ ] 全文 unavailable 會如實標記
+- [ ] Phase 完成後會存檔
+
+全部打勾：
 
 ```text
-搜尋 → 篩選 → 本地保存 → 全文驗證 → NotebookLM 個別建檔
+可以正式開始 Deep Research。
 ```
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-31"></a>
+
+# 31. 官方與專案連結
+
+## Hermes Agent
+
+https://hermes-agent.nousresearch.com/
+
+https://hermes-agent.nousresearch.com/docs/getting-started/installation
+
+https://hermes-agent.nousresearch.com/docs/user-guide/windows-native
+
+https://hermes-agent.nousresearch.com/docs/user-guide/desktop
+
+## Deep-Research-Agent
+
+https://github.com/CYC2002tommy/Deep-Research-Agent
+
+## OpenRouter
+
+https://openrouter.ai/
+
+https://openrouter.ai/keys
+
+https://openrouter.ai/models?pricing=free
+
+https://openrouter.ai/openrouter/free
+
+https://openrouter.ai/docs/faq
+
+## OpenAlex
+
+https://openalex.org/
+
+https://openalex.org/settings/api
+
+https://developers.openalex.org/
+
+## Semantic Scholar
+
+https://www.semanticscholar.org/product/api
+
+https://www.semanticscholar.org/product/api/tutorial
+
+https://api.semanticscholar.org/api-docs/
+
+## Exa
+
+https://exa.ai/mcp
+
+https://exa.ai/docs/reference/exa-mcp
+
+## Elsevier / Scopus
+
+https://dev.elsevier.com/
+
+https://dev.elsevier.com/api_key_settings.html
+
+https://dev.elsevier.com/tecdoc_api_authentication.html
+
+## Scopus MCP
+
+https://github.com/qwe4559999/scopus-mcp
+
+https://github.com/qwe4559999/scopus-mcp/pull/12
+
+## NotebookLM
+
+https://notebooklm.google.com/
+
+https://support.google.com/notebooklm/answer/16215270
+
+https://support.google.com/notebooklm/answer/16269187
+
+## NotebookLM MCP
+
+https://github.com/moodRobotics/notebooklm-mcp-server
+
+[⬆ 回到目錄](#toc)
+
+---
+
+<a id="sec-32"></a>
+
+# 32. 使用原則與學術倫理
+
+不要把 Deep Research 理解成：
+
+```text
+按一下
+→ AI 幫你寫完論文
+```
+
+比較合理：
+
+```text
+AI 幫忙處理大量機械工作
+        ↓
+搜尋
+去重
+metadata
+整理
+全文 extraction
+evidence table
+gap mapping
+        ↓
+研究者自己做判斷
+```
+
+特別注意：
+
+```text
+DOI 存在
+≠
+作者年份一定正確
+≠
+樣本數一定正確
+≠
+研究設計一定正確
+≠
+文章支持 Agent 寫的那句話
+```
+
+最後仍應由研究者人工確認：
+
+```text
+原始論文
+Methods
+Results
+sample
+statistics
+研究情境
+限制
+```
+
+另外：
+
+```text
+能下載
+≠
+有權重新散布
+```
+
+本地保存、NotebookLM 上傳與自動下載都應遵守：
+
+```text
+學校授權
+出版社條款
+著作權
+Google / NotebookLM 使用規範
+```
+
+不要使用本流程去繞過：
+
+```text
+付費牆
+登入限制
+存取控制
+anti-bot protection
+```
+
+遇到無法合法取得的全文：
+
+```text
+記錄 unavailable
+```
+
+不要假裝已讀全文。
+
+---
+
+# 完成
+
+```text
+搜尋
+→ 去重
+→ 篩選
+→ 本地保存
+→ 全文驗證
+→ NotebookLM 個別建檔
+→ Evidence synthesis
+→ 人工判斷
+```
+
+這才是整套流程。
+
+[⬆ 回到目錄](#toc)
+
