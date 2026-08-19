@@ -1852,13 +1852,10 @@ https://notebooklm.google.com/
 
 https://github.com/moodRobotics/notebooklm-mcp-server
 
-注意：
-
-```text
-這不是 Google 官方 NotebookLM API
-```
-
-它是第三方工具透過持久化 browser session 來操作 NotebookLM。
+> **重要：這不是 Google 官方 NotebookLM API。**
+>
+> NotebookLM MCP 的登入 / 重新登入應先在 PowerShell **手動完成**，不要第一次就叫 Hermes Agent 自己處理。  
+> 如果認證失效而 Agent 又自行 retry，很容易形成工具重試迴圈，白白消耗 OpenRouter 免費 request。
 
 ---
 
@@ -1884,17 +1881,9 @@ npx     = npm 提供的套件執行命令
 
 **npx 不需要另外安裝。**
 
-目前 npm 官方已把獨立 `npx` package 視為舊作法；新版 `npx` 使用 npm 的 `npm exec` 機制。
-
-官方：
-
-https://docs.npmjs.com/cli/commands/npx/
-
 ---
 
-## 16.2 先檢查
-
-一次貼：
+## 16.2 先檢查 Node.js
 
 ```powershell
 node -v
@@ -1902,7 +1891,9 @@ npm -v
 npx -v
 ```
 
-如果三行都有版本號，例如：
+三行都有版本號才繼續。
+
+例如：
 
 ```text
 v22.x.x
@@ -1910,32 +1901,19 @@ v22.x.x
 10.x.x
 ```
 
-直接跳到：
-
-[第一次登入 NotebookLM](#notebooklm-auth)
+如果任一個不存在，照下面修。
 
 ---
 
-## 16.3 如果 `node` / `npm` / `npx` 任一個不存在
+## 16.3 如果 Node.js / npm / npx 不存在
 
-### 方法 A：先讓 Hermes 修復（推薦）
-
-Hermes Windows installer 本來就會安裝 / 配置 Node.js。
-
-執行：
+### 方法 A：先讓 Hermes installer 修復
 
 ```powershell
 iex (irm https://hermes-agent.nousresearch.com/install.ps1)
 ```
 
-安裝完成後：
-
-```text
-1. 關掉所有 PowerShell / Terminal
-2. 重新開 PowerShell
-```
-
-再：
+完成後關閉所有 PowerShell，重新開啟，再測：
 
 ```powershell
 node -v
@@ -1943,229 +1921,202 @@ npm -v
 npx -v
 ```
 
-如果三個都正常，完成。
+### 方法 B：安裝官方 Node.js LTS
 
----
-
-### 方法 B：直接安裝官方 Node.js LTS
-
-如果 Hermes 修復後還是找不到，最容易理解的方法就是直接安裝官方 Node.js LTS。
-
-官方下載：
+如果還是不行：
 
 https://nodejs.org/en/download
 
-在網頁上：
-
-```text
-1. 選 LTS
-2. 選 Windows
-3. 選自己的架構（一般 Intel / AMD 電腦是 x64）
-4. 下載 Windows Installer (.msi)
-5. 雙擊安裝
-6. 基本上一路保持預設選項
-7. 確認 npm package manager 會一起安裝
-8. 安裝完成
-9. 關掉所有 PowerShell
-10. 重新開 PowerShell
-```
-
-不要選 Current 只是為了追最新版；這套用途優先選：
+選：
 
 ```text
 LTS
+Windows
+Windows Installer (.msi)
+x64（一般 Intel / AMD Windows 電腦）
 ```
 
-比較穩定。
+安裝完成後重開 PowerShell，再測：
 
-Node.js 官方下載頁目前會一起提供 npm。npm 再提供 npx。
+```powershell
+node -v
+npm -v
+npx -v
+```
 
----
-
-### 方法 C：會用 winget 的人可以一行安裝
+### 方法 C：使用 winget
 
 ```powershell
 winget install -e --id OpenJS.NodeJS.LTS
 ```
 
-安裝完：
-
-```text
-關閉 PowerShell
-→ 重新開啟
-```
-
-驗證：
-
-```powershell
-node -v
-npm -v
-npx -v
-```
-
-如果你的 Windows 連 `winget` 都沒有：
-
-```text
-不要再多修 winget
-```
-
-直接用上面的 Node.js 官方 MSI 安裝器最簡單。
-
 ---
 
-## 16.4 `node` 有版本，但 `npm` / `npx` 沒有
+## 16.4 如果 PowerShell 擋住 `npx.ps1`
 
-先：
-
-```powershell
-where.exe node
-where.exe npm
-where.exe npx
-```
-
-如果 Node 有路徑但 npm / npx 不完整：
-
-```text
-不要 npm install -g npx
-```
-
-直接：
-
-```text
-重新執行 Node.js LTS Installer
-→ Repair / 重新安裝
-```
-
-因為正常 Node.js Windows 安裝就應該一起包含 npm 與 npx。
-
----
-
-## 16.5 PowerShell 顯示 `npx.ps1 cannot be loaded`
-
-有些 Windows 會因 PowerShell execution policy 擋住 `.ps1` shim。
-
-例如：
+若看到：
 
 ```text
 npx.ps1 cannot be loaded because running scripts is disabled
 ```
 
-這時候先不要改全機安全政策。
-
-直接測：
+直接：
 
 ```powershell
 npx.cmd -v
 ```
 
-如果這個成功，可以把手動指令寫成：
-
-```powershell
-npx.cmd -y notebooklm-mcp-server auth
-```
-
-Hermes MCP 的：
-
-```yaml
-command: "npx"
-```
-
-在正常 Windows PATH 下仍可解析 Node 的 command shim。
+若成功，後續把 `npx` 改成 `npx.cmd` 即可。
 
 ---
 
-## 16.6 最後驗證
+## 16.5 安裝 NotebookLM MCP（推薦：Global Installation）
 
-一定要三個都過：
-
-```powershell
-node -v
-npm -v
-npx -v
-```
-
-或如果 PowerShell 擋 `.ps1`：
+目前這個 MCP 專案本身把 global installation 列為推薦方式。
 
 ```powershell
-node -v
-npm.cmd -v
-npx.cmd -v
+npm install -g notebooklm-mcp-server
 ```
 
-完成後才進 NotebookLM MCP。
+若 PowerShell 擋 `npm.ps1`：
+
+```powershell
+npm.cmd install -g notebooklm-mcp-server
+```
+
+安裝完成後：
+
+```powershell
+notebooklm-mcp-server --help
+where.exe notebooklm-mcp-server
+```
+
+如果 `where.exe` 仍找不到，先完全關閉 PowerShell再重新開啟。
+
+---
+
+## 16.6 可選方案：不 Global Install，直接用 NPX
+
+如果不想 global install：
+
+```powershell
+npx -y notebooklm-mcp-server auth
+npx -y notebooklm-mcp-server start
+```
+
+但本 README 後面預設採用 Global Installation，因為這樣 Agent 或終端機直接呼叫：
+
+```text
+notebooklm-mcp-server
+```
+
+時比較不容易出現：
+
+```text
+exit 127
+command not found
+```
 
 ---
 
 <a id="notebooklm-auth"></a>
 
-## 16.7 第一次登入
+## 16.7 第一次登入：一定先在 Hermes 外面手動做
+
+**先不要開 Hermes。**
+
+Global 安裝模式：
+
+```powershell
+notebooklm-mcp-server auth
+```
+
+NPX 模式：
 
 ```powershell
 npx -y notebooklm-mcp-server auth
 ```
 
-如果 PowerShell 報 `npx.ps1` execution policy 錯誤，改：
+若 PowerShell 擋 `.ps1`：
 
 ```powershell
 npx.cmd -y notebooklm-mcp-server auth
 ```
 
-瀏覽器會開啟：
+接著：
 
 ```text
-登入 Google
+瀏覽器開啟
 ↓
-進 NotebookLM
+登入要使用 NotebookLM 的 Google 帳號
 ↓
-確認看得到自己的 notebooks
+進到 NotebookLM
 ↓
-完成後關閉瀏覽器
+確定真的看得到自己的 notebooks
+↓
+再把瀏覽器視窗關掉
 ```
 
-如果之後 session 過期：
+---
+
+## 16.8 如果已經出現 `Authentication expired`
+
+先退出 Hermes：
+
+```text
+Ctrl+C
+```
+
+在普通 PowerShell 執行：
+
+```powershell
+notebooklm-mcp-server refresh_auth
+```
+
+若使用 NPX：
 
 ```powershell
 npx -y notebooklm-mcp-server refresh_auth
 ```
 
-若 PowerShell 擋 `.ps1`，改：
+重新登入，直到 NotebookLM notebooks 畫面正常出現。
+
+如果仍不行，再重新：
 
 ```powershell
-npx.cmd -y notebooklm-mcp-server refresh_auth
+notebooklm-mcp-server auth
 ```
+
+**不要叫 Hermes Agent 自己一直 retry。**
 
 ---
 
-## 16.8 加入 Hermes MCP
+## 16.9 Hermes 設定 NotebookLM MCP
 
-打開：
+開：
 
 ```powershell
 notepad "$env:LOCALAPPDATA\hermes\config.yaml"
 ```
 
-完整例子：
+Global installation 模式：
 
 ```yaml
 mcp_servers:
-  exa:
-    url: "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_advanced_exa"
-    timeout: 180
-    connect_timeout: 60
-    supports_parallel_tool_calls: false
-
-  scopus:
-    command: "uvx"
+  notebooklm:
+    command: "notebooklm-mcp-server"
     args:
-      - "--with"
-      - "mcp>=1.0,<2"
-      - "scopus-mcp"
-    env:
-      SCOPUS_API_KEY: "${SCOPUS_API_KEY}"
-    timeout: 180
+      - "start"
+    timeout: 300
     connect_timeout: 60
     supports_parallel_tool_calls: false
+```
 
+如果前面已經有 Exa / Scopus，放在同一個 `mcp_servers:` 底下。
+
+若採 NPX 模式：
+
+```yaml
   notebooklm:
     command: "npx"
     args:
@@ -2177,39 +2128,42 @@ mcp_servers:
     supports_parallel_tool_calls: false
 ```
 
-不要建立兩個：
-
-```yaml
-mcp_servers:
-```
-
-NotebookLM 有建立 notebook / 上傳來源等寫入操作，因此建議：
-
-```yaml
-supports_parallel_tool_calls: false
-```
-
 ---
 
-## 16.9 測試 MCP
+## 16.10 先只測 MCP Server 能不能啟動
 
 ```powershell
 hermes mcp test notebooklm
 ```
 
-只要：
+成功應看到：
 
 ```text
 Connected
+Tools discovered: ...
 ```
 
-並能 discover tools 即可。
+注意：
 
-工具名稱 / 數量可能因版本更新而變。
+```text
+MCP server Connected
+≠
+Google NotebookLM 認證一定有效
+```
 
 ---
 
-## 16.10 第一次只讀測試
+## 16.11 第一次帳號測試：限制成「只能 call 一次」
+
+如果 OpenRouter 已經出現：
+
+```text
+X-RateLimit-Remaining: 0
+```
+
+今天不要再用 Hermes 測 NotebookLM。
+
+有 quota 時，新開 Hermes：
 
 ```powershell
 cd "$env:USERPROFILE\Documents\DeepResearch"
@@ -2219,19 +2173,34 @@ hermes
 輸入：
 
 ```text
-Use the NotebookLM MCP to list my existing notebooks.
+Use the NotebookLM MCP.
 
-Do not create, rename, upload, modify, or delete anything.
-Return notebook titles only.
+Call notebook_list EXACTLY ONCE.
+
+If it succeeds:
+- return the notebook titles only.
+
+If it returns ANY error:
+- STOP immediately;
+- print the exact error once;
+- do NOT retry;
+- do NOT call refresh_auth;
+- do NOT run terminal commands;
+- do NOT call notebook_list again;
+- do NOT attempt to repair authentication automatically.
 ```
 
-如果能列出 notebook：
+這樣可以避免：
 
 ```text
-Hermes → NotebookLM MCP → Google account
+notebook_list
+↓
+Authentication expired
+↓
+Agent 自動 refresh / terminal / retry
+↓
+反覆消耗 LLM requests
 ```
-
-成功。
 
 [⬆ 回到目錄](#toc)
 
@@ -2287,7 +2256,25 @@ MCP 登入時仍然會自己建立 / 保存 browser session。
 
 # 18. 測試本地檔案 → NotebookLM
 
-先建立一個無關緊要的測試檔：
+這一步要在：
+
+```text
+16.11 notebook_list 單次測試成功
+```
+
+之後才做。
+
+如果還有：
+
+```text
+Authentication expired
+```
+
+**不要做這一步。**
+
+---
+
+## 18.1 建立本地測試檔
 
 ```powershell
 Set-Content `
@@ -2295,7 +2282,33 @@ Set-Content `
 "# NotebookLM Test`nThis file was uploaded by Hermes for testing."
 ```
 
-進 Hermes：
+確認：
+
+```powershell
+Test-Path "$env:USERPROFILE\Documents\DeepResearch\papers\notebooklm_test.md"
+```
+
+應該：
+
+```text
+True
+```
+
+---
+
+## 18.2 第一次建議人工建立測試 Notebook
+
+先打開 NotebookLM，自行建立：
+
+```text
+Hermes NotebookLM Test
+```
+
+第一次不讓 Agent 自己 create notebook，是為了避免 retry 時建立重複 notebook。
+
+---
+
+## 18.3 用新 Hermes session 做一次性上傳測試
 
 ```powershell
 cd "$env:USERPROFILE\Documents\DeepResearch"
@@ -2307,41 +2320,87 @@ hermes
 ```text
 Use the NotebookLM MCP.
 
-Create a notebook named:
-Hermes NotebookLM Test
+This is a controlled one-shot test.
 
-Then upload this local file as one individual source:
+1. Call notebook_list once and find the existing notebook:
+   Hermes NotebookLM Test
 
-%USERPROFILE%/Documents/DeepResearch/papers/notebooklm_test.md
+2. If the notebook does not exist, STOP.
+   Do not create it.
 
-After upload, verify that the notebook and source exist.
+3. Upload this local file once:
+   %USERPROFILE%/Documents/DeepResearch/papers/notebooklm_test.md
 
-Do not delete or modify any other notebook.
+4. Verify the source once.
+
+IMPORTANT:
+- If ANY MCP call returns an authentication error, STOP immediately.
+- Do not retry any failed NotebookLM tool call.
+- Do not run auth or refresh_auth from the agent.
+- Do not run terminal repair commands.
+- Do not create duplicate notebooks.
+- Do not upload the same source twice.
 ```
 
-如果 MCP 不會解析 `%USERPROFILE%`，先在 PowerShell：
+如果 MCP 不會解析 `%USERPROFILE%`，先：
 
 ```powershell
 $env:USERPROFILE
 ```
 
-例如得到：
+把實際路徑貼進 prompt。
+
+---
+
+## 18.4 如果出現 `Authentication expired`
+
+立刻：
 
 ```text
-C:\Users\student
+Ctrl+C
 ```
 
-再把 prompt 改成：
+退出 Hermes。
 
-```text
-C:/Users/student/Documents/DeepResearch/papers/notebooklm_test.md
+回 PowerShell：
+
+```powershell
+notebooklm-mcp-server refresh_auth
 ```
 
-最後到：
+---
+
+## 18.5 如果出現 `notebooklm-mcp-server auth` → `exit 127`
+
+代表你的系統只用 NPX temporary execution，沒有 global executable。
+
+推薦修法：
+
+```powershell
+npm install -g notebooklm-mcp-server
+where.exe notebooklm-mcp-server
+```
+
+或不要讓 Agent 自動 repair，人工使用：
+
+```powershell
+npx -y notebooklm-mcp-server auth
+```
+
+---
+
+## 18.6 最後人工確認
+
+打開：
 
 https://notebooklm.google.com/
 
-人工確認一次。
+應該看到：
+
+```text
+Hermes NotebookLM Test
+└─ notebooklm_test.md
+```
 
 [⬆ 回到目錄](#toc)
 
