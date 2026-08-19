@@ -4,7 +4,7 @@
 
 > 適用：Windows 10 / 11  
 > 目標：從零開始安裝 Hermes、Deep-Research-Agent、OpenRouter、OpenAlex、Semantic Scholar、Exa、Scopus、NotebookLM，並設定本地文獻保存、免費額度保護、桌面版啟動與完整研究工作流。  
-> 最後整理：2026-08-18
+> 最後整理：2026-08-19（NotebookLM 改採本地整理＋手動匯入）
 >
 > 這份教學是「新手照著做就能裝」版本。  
 > 所有 API Key 都不要貼到 GitHub、Discord、LINE 或公開截圖。
@@ -32,10 +32,10 @@
 13. [設定 Scopus MCP](#sec-13)
 14. [建立本地研究工作區](#sec-14)
 15. [設定本地文獻保存規則](#sec-15)
-16. [設定 NotebookLM MCP](#sec-16)
-17. [已經裝好 NotebookLM 桌面版 / PWA 怎麼辦](#sec-17)
-18. [測試本地檔案 → NotebookLM](#sec-18)
-19. [設定「核心文獻自動導入 NotebookLM」](#sec-19)
+16. [NotebookLM 改為手動匯入](#sec-16)
+17. [NotebookLM 桌面版 / PWA 怎麼使用](#sec-17)
+18. [測試本地 PDF / Markdown → NotebookLM](#sec-18)
+19. [設定「核心文獻整理給 NotebookLM」](#sec-19)
 20. [加入 Economy Mode](#sec-20)
 21. [完整 Economy Mode 規則](#sec-21)
 22. [確認 Skill 還正常](#sec-22)
@@ -74,11 +74,10 @@ Hermes Agent
       ├── OpenAlex API
       ├── Semantic Scholar API
       ├── Exa MCP
-      ├── Scopus MCP
-      └── NotebookLM MCP
-              │
-              ▼
-      NotebookLM / Gemini Notebook
+      └── Scopus MCP
+
+NotebookLM / Gemini Notebook
+→ 由使用者手動匯入本地整理好的核心文獻
 ```
 
 研究資料則另外保存在：
@@ -115,7 +114,9 @@ Scopus / Semantic Scholar / Exa 補資料
    ↓
 Evidence table / literature manifest
    ↓
-NotebookLM 個別上傳核心文獻
+整理 notebooklm_ready\
+   ↓
+使用者手動拖入 NotebookLM
    ↓
 Gap analysis
    ↓
@@ -149,7 +150,7 @@ NT$0 優先
 | Semantic Scholar | 免費 API key | 初始約 1 request/sec，共用於所有 endpoints |
 | Exa MCP | 可先無 API key使用 | 免費 MCP 有服務端限制 |
 | Scopus API | Academic API key | 各 API 有 weekly quota / throttling |
-| NotebookLM | Google 免費方案 | Free plan 有 notebook / source / daily query 等限制 |
+| NotebookLM | Google 免費方案 | 本 README 採手動匯入，不依賴 NotebookLM MCP |
 
 目前 OpenRouter 官方 FAQ 說明：免費模型在未購買至少 US$10 credits 的帳號上，總共約 50 requests/day；若帳號曾購買至少 10 credits，免費模型上限提高到 1000 requests/day。
 
@@ -522,9 +523,43 @@ npm -v
 npx -v
 ```
 
-如果仍然缺少，或你想安裝一套 Windows 全域 Node.js，請看本 README 的：
+如果仍然缺少，直接安裝官方 Node.js LTS：
 
-[NotebookLM → Node.js / npm / npx 完整安裝](#node-full-install)
+https://nodejs.org/en/download
+
+選：
+
+```text
+LTS
+Windows
+Windows Installer (.msi)
+x64（一般 Intel / AMD Windows 電腦）
+```
+
+基本上保持預設選項安裝即可。Node.js 安裝完成後會一起提供 npm；npx 則由 npm 提供，不需要另外安裝。
+
+安裝完成後：
+
+```text
+關閉所有 PowerShell
+→ 重新開啟 PowerShell
+```
+
+重新驗證：
+
+```powershell
+node -v
+npm -v
+npx -v
+```
+
+如果 PowerShell 顯示 `npx.ps1 cannot be loaded`，先改測：
+
+```powershell
+npx.cmd -v
+```
+
+不要使用 `npm install -g npx`。
 
 ---
 
@@ -1842,364 +1877,187 @@ skills/deep-science-writer/scripts/node/fetch_unpaywall_oa.js
 
 <a id="sec-16"></a>
 
-# 16. 設定 NotebookLM MCP
+# 16. NotebookLM 改為手動匯入
 
-NotebookLM：
+目前這份 README **不再把 NotebookLM MCP 當成必要元件**。
 
-https://notebooklm.google.com/
-
-這裡使用第三方 MCP：
-
-https://github.com/moodRobotics/notebooklm-mcp-server
-
-> **重要：這不是 Google 官方 NotebookLM API。**
->
-> NotebookLM MCP 的登入 / 重新登入應先在 PowerShell **手動完成**，不要第一次就叫 Hermes Agent 自己處理。  
-> 如果認證失效而 Agent 又自行 retry，很容易形成工具重試迴圈，白白消耗 OpenRouter 免費 request。
-
----
-
-<a id="node-full-install"></a>
-
-## 16.1 Node.js / npm / npx 到底是什麼？
-
-NotebookLM MCP 是 Node.js / TypeScript 工具，所以需要：
+原因：
 
 ```text
-Node.js
-npm
-npx
+NotebookLM MCP
+→ 需要第三方 browser session
+→ 認證可能過期
+→ Agent 可能自動 retry
+→ 容易浪費 OpenRouter 免費 request
 ```
 
-三者關係：
+而真正研究上需要的是：
 
 ```text
-Node.js = JavaScript runtime
-npm     = Node.js 的 package manager
-npx     = npm 提供的套件執行命令
+找到文獻
+↓
+合法取得全文
+↓
+本地保存
+↓
+篩選出核心文獻
+↓
+人工拖進 NotebookLM
 ```
 
-**npx 不需要另外安裝。**
+這樣更穩，也更容易除錯。
 
 ---
 
-## 16.2 先檢查 Node.js
+## 16.1 NotebookLM 還需要安裝 MCP 嗎？
 
-```powershell
-node -v
-npm -v
-npx -v
-```
+**不用。**
 
-三行都有版本號才繼續。
-
-例如：
-
-```text
-v22.x.x
-10.x.x
-10.x.x
-```
-
-如果任一個不存在，照下面修。
-
----
-
-## 16.3 如果 Node.js / npm / npx 不存在
-
-### 方法 A：先讓 Hermes installer 修復
-
-```powershell
-iex (irm https://hermes-agent.nousresearch.com/install.ps1)
-```
-
-完成後關閉所有 PowerShell，重新開啟，再測：
-
-```powershell
-node -v
-npm -v
-npx -v
-```
-
-### 方法 B：安裝官方 Node.js LTS
-
-如果還是不行：
-
-https://nodejs.org/en/download
-
-選：
-
-```text
-LTS
-Windows
-Windows Installer (.msi)
-x64（一般 Intel / AMD Windows 電腦）
-```
-
-安裝完成後重開 PowerShell，再測：
-
-```powershell
-node -v
-npm -v
-npx -v
-```
-
-### 方法 C：使用 winget
-
-```powershell
-winget install -e --id OpenJS.NodeJS.LTS
-```
-
----
-
-## 16.4 如果 PowerShell 擋住 `npx.ps1`
-
-若看到：
-
-```text
-npx.ps1 cannot be loaded because running scripts is disabled
-```
-
-直接：
-
-```powershell
-npx.cmd -v
-```
-
-若成功，後續把 `npx` 改成 `npx.cmd` 即可。
-
----
-
-## 16.5 安裝 NotebookLM MCP（推薦：Global Installation）
-
-目前這個 MCP 專案本身把 global installation 列為推薦方式。
-
-```powershell
-npm install -g notebooklm-mcp-server
-```
-
-若 PowerShell 擋 `npm.ps1`：
-
-```powershell
-npm.cmd install -g notebooklm-mcp-server
-```
-
-安裝完成後：
-
-```powershell
-notebooklm-mcp-server --help
-where.exe notebooklm-mcp-server
-```
-
-如果 `where.exe` 仍找不到，先完全關閉 PowerShell再重新開啟。
-
----
-
-## 16.6 可選方案：不 Global Install，直接用 NPX
-
-如果不想 global install：
-
-```powershell
-npx -y notebooklm-mcp-server auth
-npx -y notebooklm-mcp-server start
-```
-
-但本 README 後面預設採用 Global Installation，因為這樣 Agent 或終端機直接呼叫：
+如果目標只是把 Hermes 找到並下載的核心 PDF 丟進 NotebookLM 做跨文獻整理，完全不需要：
 
 ```text
 notebooklm-mcp-server
+auth
+refresh_auth
+Hermes NotebookLM MCP
 ```
 
-時比較不容易出現：
+本 README 後續預設：
 
 ```text
-exit 127
-command not found
+NotebookLM MCP = 關閉 / 不使用
 ```
 
 ---
 
-<a id="notebooklm-auth"></a>
+## 16.2 如果之前已經設定過 NotebookLM MCP
 
-## 16.7 第一次登入：一定先在 Hermes 外面手動做
-
-**先不要開 Hermes。**
-
-Global 安裝模式：
-
-```powershell
-notebooklm-mcp-server auth
-```
-
-NPX 模式：
-
-```powershell
-npx -y notebooklm-mcp-server auth
-```
-
-若 PowerShell 擋 `.ps1`：
-
-```powershell
-npx.cmd -y notebooklm-mcp-server auth
-```
-
-接著：
+可以先留著，不必急著移除。只要不要在研究 Prompt 裡要求：
 
 ```text
-瀏覽器開啟
-↓
-登入要使用 NotebookLM 的 Google 帳號
-↓
-進到 NotebookLM
-↓
-確定真的看得到自己的 notebooks
-↓
-再把瀏覽器視窗關掉
+upload to NotebookLM
+create notebook
+use notebooklm MCP
 ```
 
----
-
-## 16.8 如果已經出現 `Authentication expired`
-
-先退出 Hermes：
-
-```text
-Ctrl+C
-```
-
-在普通 PowerShell 執行：
-
-```powershell
-notebooklm-mcp-server refresh_auth
-```
-
-若使用 NPX：
-
-```powershell
-npx -y notebooklm-mcp-server refresh_auth
-```
-
-重新登入，直到 NotebookLM notebooks 畫面正常出現。
-
-如果仍不行，再重新：
-
-```powershell
-notebooklm-mcp-server auth
-```
-
-**不要叫 Hermes Agent 自己一直 retry。**
-
----
-
-## 16.9 Hermes 設定 NotebookLM MCP
-
-開：
+如果想完全停用，開：
 
 ```powershell
 notepad "$env:LOCALAPPDATA\hermes\config.yaml"
 ```
 
-Global installation 模式：
+找到 `notebooklm:` 區塊並移除。
 
-```yaml
-mcp_servers:
-  notebooklm:
-    command: "notebooklm-mcp-server"
-    args:
-      - "start"
-    timeout: 300
-    connect_timeout: 60
-    supports_parallel_tool_calls: false
+> 如果 `mcp_servers:` 裡還有 Exa / Scopus，不要把整個 `mcp_servers:` 刪掉。
+
+---
+
+## 16.3 Node / npm / npx 還需要嗎？
+
+對於**目前這套手動 NotebookLM 流程**，NotebookLM 不再需要 Node.js / npm / npx。
+
+但 Hermes 本身或其他 MCP 仍可能使用 Node.js，所以 README 前面保留 Node.js 檢查與修復方式。
+
+---
+
+## 16.4 每個研究專案建立自己的資料夾
+
+建議：
+
+```text
+Documents\
+└─ DeepResearch\
+   └─ <ProjectName>\
+      ├─ cache\
+      ├─ evidence\
+      ├─ papers\
+      ├─ reports\
+      └─ notebooklm_ready\
 ```
 
-如果前面已經有 Exa / Scopus，放在同一個 `mcp_servers:` 底下。
+其中：
 
-若採 NPX 模式：
+```text
+papers\
+→ 所有合法取得、準備 deep-read 的全文
 
-```yaml
-  notebooklm:
-    command: "npx"
-    args:
-      - "-y"
-      - "notebooklm-mcp-server"
-      - "start"
-    timeout: 300
-    connect_timeout: 60
-    supports_parallel_tool_calls: false
+notebooklm_ready\
+→ 最後真正要手動丟進 NotebookLM 的核心文獻
 ```
 
 ---
 
-## 16.10 先只測 MCP Server 能不能啟動
+## 16.5 建立專案資料夾範例
 
 ```powershell
-hermes mcp test notebooklm
+$project = "$env:USERPROFILE\Documents\DeepResearch\Athlete_Nutrition_Platform"
+
+New-Item -ItemType Directory -Force `
+"$project\cache", `
+"$project\evidence", `
+"$project\papers", `
+"$project\reports", `
+"$project\notebooklm_ready" | Out-Null
 ```
 
-成功應看到：
+確認：
 
-```text
-Connected
-Tools discovered: ...
+```powershell
+Get-ChildItem $project
 ```
 
-注意：
+應看到：
 
 ```text
-MCP server Connected
-≠
-Google NotebookLM 認證一定有效
+cache
+evidence
+papers
+reports
+notebooklm_ready
 ```
 
 ---
 
-## 16.11 第一次帳號測試：限制成「只能 call 一次」
+## 16.6 `notebooklm_ready` 的用途
 
-如果 OpenRouter 已經出現：
+它只是最後核心文獻的待匯入區，不是第二份完整 archive。
 
-```text
-X-RateLimit-Remaining: 0
-```
-
-今天不要再用 Hermes 測 NotebookLM。
-
-有 quota 時，新開 Hermes：
-
-```powershell
-cd "$env:USERPROFILE\Documents\DeepResearch"
-hermes
-```
-
-輸入：
+例如：
 
 ```text
-Use the NotebookLM MCP.
+papers\
+├─ 2021_Author_A.pdf
+├─ 2022_Author_B.pdf
+├─ 2023_Author_C.pdf
+├─ 2024_Author_D.pdf
+└─ 2025_Author_E.pdf
 
-Call notebook_list EXACTLY ONCE.
-
-If it succeeds:
-- return the notebook titles only.
-
-If it returns ANY error:
-- STOP immediately;
-- print the exact error once;
-- do NOT retry;
-- do NOT call refresh_auth;
-- do NOT run terminal commands;
-- do NOT call notebook_list again;
-- do NOT attempt to repair authentication automatically.
+notebooklm_ready\
+├─ 2022_Author_B.pdf
+├─ 2024_Author_D.pdf
+└─ 2025_Author_E.pdf
 ```
 
-這樣可以避免：
+代表只有 B、D、E 是最後希望放進 NotebookLM 的核心來源。
+
+---
+
+## 16.7 不要把候選文獻全部丟 NotebookLM
+
+正確：
 
 ```text
-notebook_list
+40～60 candidates
 ↓
-Authentication expired
+abstract screening
 ↓
-Agent 自動 refresh / terminal / retry
+8～12 deep-read
 ↓
-反覆消耗 LLM requests
+最後 retained / cited papers
+↓
+notebooklm_ready
+↓
+人工上傳
 ```
 
 [⬆ 回到目錄](#toc)
@@ -2208,45 +2066,48 @@ Agent 自動 refresh / terminal / retry
 
 <a id="sec-17"></a>
 
-# 17. 已經裝好 NotebookLM 桌面版 / PWA 怎麼辦
+# 17. NotebookLM 桌面版 / PWA 怎麼使用
 
-不用移除，也不用重裝。
+如果已經有 NotebookLM 網頁、桌面捷徑、Chrome / Edge PWA 或獨立視窗版，直接照平常方式用。
 
-如果你電腦上已經有：
-
-```text
-NotebookLM 的桌面捷徑
-Chrome / Edge 安裝的 PWA
-獨立視窗版
-```
-
-照樣可以使用。
-
-Hermes 並不是去操作你目前看到的那個 NotebookLM 視窗。
-
-架構是：
+新的流程：
 
 ```text
-你平常人工使用
-NotebookLM 桌面捷徑 / PWA / Browser
-            │
-            └──── 同一 Google 帳號
-
-Hermes 自動化
-Hermes → notebooklm-mcp-server → 獨立 browser session
-            │
-            └──── 同一 Google 帳號
+Hermes
+↓
+把 PDF 整理到本地 notebooklm_ready\
+↓
+你開 NotebookLM
+↓
+一次選取核心文獻
+↓
+拖進 notebook
 ```
 
-也就是：
+Hermes 不需要控制 NotebookLM 視窗，也不需要綁定 Google session。
+
+## 17.1 手動匯入方式
+
+完成研究篩選後：
 
 ```text
-有沒有裝桌面版都可以
+打開 notebooklm_ready\
+↓
+Ctrl+A
+↓
+拖到 NotebookLM
 ```
 
-MCP 登入時仍然會自己建立 / 保存 browser session。
+或在 NotebookLM 使用 `Add source → Upload`。
 
-平常要看內容時可以繼續用原本熟悉的 NotebookLM 介面。
+好處：
+
+```text
+看得到實際上傳了哪些檔案
+不會因 Agent retry 重複建立來源
+NotebookLM 認證問題不影響文獻搜尋
+不消耗 Hermes LLM request 處理登入錯誤
+```
 
 [⬆ 回到目錄](#toc)
 
@@ -2254,153 +2115,66 @@ MCP 登入時仍然會自己建立 / 保存 browser session。
 
 <a id="sec-18"></a>
 
-# 18. 測試本地檔案 → NotebookLM
+# 18. 測試本地 PDF / Markdown → NotebookLM
 
-這一步要在：
+現在不測 MCP，只測本地檔案整理與人工上傳。
 
-```text
-16.11 notebook_list 單次測試成功
-```
-
-之後才做。
-
-如果還有：
-
-```text
-Authentication expired
-```
-
-**不要做這一步。**
-
----
-
-## 18.1 建立本地測試檔
+## 18.1 建立測試檔
 
 ```powershell
+$project = "$env:USERPROFILE\Documents\DeepResearch\NotebookLM_Test"
+
+New-Item -ItemType Directory -Force `
+"$project\papers", `
+"$project\notebooklm_ready" | Out-Null
+
 Set-Content `
-"$env:USERPROFILE\Documents\DeepResearch\papers\notebooklm_test.md" `
-"# NotebookLM Test`nThis file was uploaded by Hermes for testing."
+"$project\notebooklm_ready\notebooklm_test.md" `
+"# NotebookLM Test`nThis file was prepared locally for manual NotebookLM upload."
 ```
 
 確認：
 
 ```powershell
-Test-Path "$env:USERPROFILE\Documents\DeepResearch\papers\notebooklm_test.md"
+Test-Path "$project\notebooklm_ready\notebooklm_test.md"
 ```
 
-應該：
+應該是 `True`。
 
-```text
-True
-```
-
----
-
-## 18.2 第一次建議人工建立測試 Notebook
-
-先打開 NotebookLM，自行建立：
-
-```text
-Hermes NotebookLM Test
-```
-
-第一次不讓 Agent 自己 create notebook，是為了避免 retry 時建立重複 notebook。
-
----
-
-## 18.3 用新 Hermes session 做一次性上傳測試
-
-```powershell
-cd "$env:USERPROFILE\Documents\DeepResearch"
-hermes
-```
-
-輸入：
-
-```text
-Use the NotebookLM MCP.
-
-This is a controlled one-shot test.
-
-1. Call notebook_list once and find the existing notebook:
-   Hermes NotebookLM Test
-
-2. If the notebook does not exist, STOP.
-   Do not create it.
-
-3. Upload this local file once:
-   %USERPROFILE%/Documents/DeepResearch/papers/notebooklm_test.md
-
-4. Verify the source once.
-
-IMPORTANT:
-- If ANY MCP call returns an authentication error, STOP immediately.
-- Do not retry any failed NotebookLM tool call.
-- Do not run auth or refresh_auth from the agent.
-- Do not run terminal repair commands.
-- Do not create duplicate notebooks.
-- Do not upload the same source twice.
-```
-
-如果 MCP 不會解析 `%USERPROFILE%`，先：
-
-```powershell
-$env:USERPROFILE
-```
-
-把實際路徑貼進 prompt。
-
----
-
-## 18.4 如果出現 `Authentication expired`
-
-立刻：
-
-```text
-Ctrl+C
-```
-
-退出 Hermes。
-
-回 PowerShell：
-
-```powershell
-notebooklm-mcp-server refresh_auth
-```
-
----
-
-## 18.5 如果出現 `notebooklm-mcp-server auth` → `exit 127`
-
-代表你的系統只用 NPX temporary execution，沒有 global executable。
-
-推薦修法：
-
-```powershell
-npm install -g notebooklm-mcp-server
-where.exe notebooklm-mcp-server
-```
-
-或不要讓 Agent 自動 repair，人工使用：
-
-```powershell
-npx -y notebooklm-mcp-server auth
-```
-
----
-
-## 18.6 最後人工確認
+## 18.2 手動丟進 NotebookLM
 
 打開：
 
 https://notebooklm.google.com/
 
-應該看到：
+建立測試 notebook：
 
 ```text
 Hermes NotebookLM Test
-└─ notebooklm_test.md
 ```
+
+然後：
+
+```text
+Add source
+→ Upload
+→ 選 notebooklm_test.md
+```
+
+或直接把檔案拖進 NotebookLM。
+
+如果能成功，本地整理 → NotebookLM 這條鏈就成立。
+
+## 18.3 正式研究時換成 PDF
+
+```text
+notebooklm_ready\
+├─ 2023_Author_Title.pdf
+├─ 2024_Author_Title.pdf
+└─ 2025_Author_Title.pdf
+```
+
+一次多選後拖進 NotebookLM 即可。
 
 [⬆ 回到目錄](#toc)
 
@@ -2408,149 +2182,116 @@ Hermes NotebookLM Test
 
 <a id="sec-19"></a>
 
-# 19. 設定「核心文獻自動導入 NotebookLM」
+# 19. 設定「核心文獻整理給 NotebookLM」
 
-**不要把 broad search 找到的所有候選文獻全部丟 NotebookLM。**
-
-建議：
+現在不做自動上傳，改成：
 
 ```text
-OpenAlex 40～60 candidates
-        ↓
-去重
-        ↓
-abstract screening
-        ↓
-Scopus / S2 / Exa cross-check
-        ↓
-8～12 篇核心 deep-read 文獻
-        ↓
-本地 papers\
-        ↓
-NotebookLM
+Hermes 自動整理本地檔案
+↓
+使用者人工上傳 NotebookLM
 ```
 
-NotebookLM 建議放：
+## 19.1 在 SKILL.md 加入本地 Archive 規則
 
-```text
-✓ deep-read papers
-✓ final evidence base
-✓ 最終實際引用文獻
-✓ 使用者指定的重要文獻
+開：
+
+```powershell
+$skill = "$env:LOCALAPPDATA\hermes\skills\Deep-Research-Agent\skills\deep-science-writer\SKILL.md"
+notepad $skill
 ```
 
-不要放：
-
-```text
-✗ 被排除候選
-✗ 重複 DOI
-✗ 只有 title 的 metadata
-✗ 搜尋結果頁
-✗ 無法取得卻假裝存在的 PDF
-```
-
----
-
-## 19.1 在 SKILL.md 加入規則
+加入：
 
 ```markdown
-### NotebookLM Literature Archiving
+### Local Literature Archive — Primary Workflow
 
-NotebookLM integration is enabled only when the `notebooklm`
-MCP server is connected and authenticated.
+The local filesystem is the PRIMARY literature archive.
 
-Do NOT upload the entire broad-discovery candidate pool to NotebookLM.
+NotebookLM is NOT part of the automated research pipeline.
 
-Upload only:
-- papers selected for deep reading;
-- papers retained in the final evidence base;
-- papers cited in the final report;
-- papers explicitly requested by the user.
+Research root:
+`%USERPROFILE%/Documents/DeepResearch/`
 
-Before uploading:
-1. Deduplicate by DOI, then normalized title.
-2. Verify paper metadata.
-3. Prefer an actual legally obtained local full-text PDF.
-4. Confirm the local file exists.
-5. Record the local path in `evidence/literature_manifest.csv`.
+For each research project, create a dedicated project folder:
+`%USERPROFILE%/Documents/DeepResearch/<ProjectName>/`
 
-For each research project:
-- Create or reuse ONE NotebookLM notebook dedicated to that project.
-- Use a descriptive notebook name:
-  `DeepResearch - <Research Topic>`
-- Add each paper as an INDIVIDUAL source.
-- Never combine multiple papers into one source solely to save source slots.
+Inside it create:
+- `papers/`
+- `evidence/`
+- `reports/`
+- `cache/`
+- `notebooklm_ready/`
 
-Preferred upload order:
-1. Local legally obtained full-text PDF
-2. Legitimate open-access PDF/web URL
-3. Verified abstract/text only when full text is genuinely unavailable,
-   and clearly label it as abstract-only.
+For every paper selected for deep reading:
+1. Verify metadata first.
+2. Deduplicate by DOI, then normalized title.
+3. Attempt to obtain full text only through legitimate access:
+   - open-access publisher copy;
+   - institutional repository;
+   - OpenAlex / Unpaywall OA location;
+   - legitimate institutional access.
+4. If a PDF is legally available, download and save it under:
+   `<ProjectName>/papers/`
+5. Use filename format:
+   `YEAR_FirstAuthor_ShortTitle.pdf`
+6. Record the local PDF path in:
+   `<ProjectName>/evidence/literature_manifest.csv`
+7. Never mark a paper as full-text verified unless the actual file
+   was successfully downloaded and read.
 
-After successful upload:
-- update `notebooklm_uploaded = yes`
-  in `evidence/literature_manifest.csv`;
-- record the NotebookLM notebook name;
-- verify that the source actually exists.
+If full text is unavailable:
+- preserve title, authors, DOI, journal, year, URL and database IDs;
+- set `local_pdf = unavailable`;
+- set verification level to `metadata` or `abstract`;
+- do not fabricate or generate a replacement PDF.
 
-If NotebookLM authentication or ingestion fails:
-- preserve local files and evidence records;
-- continue the research workflow;
-- do not allow NotebookLM failure to block the literature review.
+For NotebookLM:
+- do NOT invoke NotebookLM MCP;
+- do NOT create notebooks;
+- do NOT upload sources automatically;
+- do NOT allow NotebookLM failure to block research.
 
-NotebookLM is a knowledge-management destination,
-not a substitute for DOI verification or full-text evidence verification.
+After screening and full-text verification:
+- copy ONLY the retained deep-read / final evidence papers into:
+  `<ProjectName>/notebooklm_ready/`
+- keep every paper as an individual file;
+- do not copy excluded candidates;
+- do not copy duplicate DOI/title records.
+
+The user will manually upload files from `notebooklm_ready/`
+to NotebookLM later.
 ```
 
----
+## 19.2 讓 Hermes 產生 NotebookLM 清單
 
-## 19.2 NotebookLM 免費方案限制
-
-目前 Google 官方列出的 Free plan 常見限制：
+建議另外輸出：
 
 ```text
-100 notebooks
-50 sources / notebook
-50 chat queries / day
-3 audio generations / day
+<ProjectName>\evidence\notebooklm_sources.txt
 ```
 
-每個 source：
+內容記錄：作者、年份、檔名、DOI、verification level。
+
+## 19.3 manifest 加兩個欄位
 
 ```text
-最多 500,000 words
-本地 upload 最多 200 MB
+notebooklm_ready
+notebooklm_uploaded_manual
 ```
 
-Google 官方說明：
-
-https://support.google.com/notebooklm/answer/16269187
-
-來源格式：
-
-https://support.google.com/notebooklm/answer/16215270
-
-Deep Research 最常用：
+例如：
 
 ```text
-PDF
-DOCX
-TXT
-Markdown
-CSV
-PPTX
-Web URL
-ePub
-YouTube URL
+notebooklm_ready = yes
+notebooklm_uploaded_manual = no
 ```
 
-若有完整 PDF：
+人工上傳後可改成：
 
 ```text
-優先上傳 PDF
+notebooklm_uploaded_manual = yes
 ```
-
-不要把付費牆 landing page 當成已匯入全文。
 
 [⬆ 回到目錄](#toc)
 
@@ -2716,37 +2457,18 @@ Never claim full-text verification when only metadata or abstract was available.
   `YEAR_FirstAuthor_ShortTitle.pdf`
 - Deduplicate by DOI first, then normalized title.
 
-### NotebookLM Literature Archiving
-NotebookLM integration is active only when the `notebooklm`
-MCP server is connected and authenticated.
+### NotebookLM
 
-Do NOT upload the broad-discovery candidate pool.
+NotebookLM is disabled from the automated workflow by default.
 
-Upload only:
-- deep-read papers;
-- final evidence-base papers;
-- final cited papers;
-- papers explicitly requested by the user.
-
-Before upload:
-1. Deduplicate by DOI/title.
-2. Verify metadata.
-3. Prefer legally obtained local full-text PDF.
-4. Confirm local file exists.
-5. Record the local path in `literature_manifest.csv`.
-
-For each research project:
-- Create or reuse one dedicated NotebookLM notebook.
-- Suggested name:
-  `DeepResearch - <Research Topic>`
-- Keep each paper as an individual source.
-
-After successful upload:
-- record notebook name;
-- set `notebooklm_uploaded = yes`;
-- verify the source exists.
-
-NotebookLM failure must NOT block the research workflow.
+- Do not invoke NotebookLM MCP.
+- Do not create notebooks automatically.
+- Do not upload sources automatically.
+- After screening and full-text verification, copy retained core papers
+  to `<ProjectName>/notebooklm_ready/`.
+- The user will manually upload those files to NotebookLM.
+- NotebookLM must never block literature retrieval, verification,
+  local archiving, or evidence synthesis.
 
 ### Optional Integrations
 The following must not block basic research:
@@ -2872,8 +2594,8 @@ Follow the local runtime policy strictly:
 - store all outputs under my Documents/DeepResearch workspace;
 - save legally obtained deep-read papers locally;
 - update the literature manifest;
-- upload retained deep-read/full-text papers to the project NotebookLM
-  only if NotebookLM MCP is connected;
+- place retained deep-read/full-text papers into the project's
+  `notebooklm_ready/` folder for manual NotebookLM upload;
 - stop after Phase 0.5 and wait for my approval.
 ```
 
@@ -2893,8 +2615,6 @@ Follow the local runtime policy strictly:
 
 # 25. 完整文獻保存與 NotebookLM 流程
 
-推薦架構：
-
 ```text
                  OpenAlex
                     │
@@ -2910,7 +2630,7 @@ Follow the local runtime policy strictly:
         └───────────┼────────────┘
                     │
                     ▼
- evidence/literature_manifest.csv
+       evidence/literature_manifest.csv
                     │
                     ▼
             selected deep reads
@@ -2920,35 +2640,20 @@ Follow the local runtime policy strictly:
   papers/*.pdf              reports/*.md
         │
         ▼
- NotebookLM MCP
+ final retained / cited papers
         │
         ▼
- DeepResearch - <Topic>
+ notebooklm_ready/*.pdf
         │
-        ├─ Paper 1
-        ├─ Paper 2
-        ├─ Paper 3
-        └─ ...
+        ▼
+ 使用者手動拖進 NotebookLM
 ```
 
-其中：
+`papers\` 是完整本地 archive。
 
-```text
-本地 papers\
-```
+`notebooklm_ready\` 只是最後核心文獻的待上傳區。
 
-才是主要 archive。
-
-NotebookLM 是：
-
-```text
-跨文獻問答
-摘要
-Audio Overview
-研究整理
-```
-
-不要把 NotebookLM 當唯一備份。
+NotebookLM 不是唯一備份，也不是研究 pipeline 的必要依賴。
 
 [⬆ 回到目錄](#toc)
 
@@ -3447,9 +3152,10 @@ hermes mcp test scopus
 
 ## NotebookLM
 
-```powershell
-hermes mcp test notebooklm
-```
+NotebookLM 採手動匯入，不需要 MCP health check。
+
+確認各專案有 `notebooklm_ready` 即可。
+
 
 ## OpenAlex
 
@@ -3537,13 +3243,11 @@ notebooklm
 ## NotebookLM
 
 - [ ] Node.js / npm / npx 都正常
-- [ ] NotebookLM MCP 已 auth
-- [ ] `hermes mcp test notebooklm` Connected
-- [ ] Hermes 可以 list notebooks
-- [ ] 測試本地檔案可上傳
+- [ ] `notebooklm_ready` 已建立
+- [ ] 測試檔可人工上傳 NotebookLM
 - [ ] broad candidates 不會全部上傳
-- [ ] deep-read paper 每篇 individual source
-- [ ] manifest 會記錄 notebook / upload status
+- [ ] deep-read / retained papers 會個別放進 `notebooklm_ready`
+- [ ] manifest 會記錄 `notebooklm_ready` 與人工上傳狀態
 
 ## 研究工作流
 
@@ -3638,7 +3342,7 @@ https://support.google.com/notebooklm/answer/16215270
 
 https://support.google.com/notebooklm/answer/16269187
 
-## NotebookLM MCP
+## NotebookLM MCP（可選，不是本 README 必要元件）
 
 https://github.com/moodRobotics/notebooklm-mcp-server
 
@@ -3743,7 +3447,8 @@ anti-bot protection
 → 篩選
 → 本地保存
 → 全文驗證
-→ NotebookLM 個別建檔
+→ 整理 notebooklm_ready
+→ 人工匯入 NotebookLM
 → Evidence synthesis
 → 人工判斷
 ```
